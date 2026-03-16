@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────
+
+enum UserRole {
+  BROKER    @map("broker")
+  PROVIDER  @map("provider")
+  ADMIN     @map("admin")
+
+  @@map("user_role")
+}
+
+enum TripStatus {
+  PENDING           @map("pending")
+  ASSIGNED          @map("assigned")
+  ACCEPTED          @map("accepted")
+  REJECTED          @map("rejected")
+  DRIVER_EN_ROUTE   @map("driver_en_route")
+  PASSENGER_PICKED_UP @map("passenger_picked_up")
+  COMPLETED         @map("completed")
+  CANCELLED         @map("cancelled")
+  NO_SHOW           @map("no_show")
+
+  @@map("trip_status")
+}
+
+enum MobilityType {
+  AMBULATORY  @map("ambulatory")
+  WHEELCHAIR  @map("wheelchair")
+  STRETCHER   @map("stretcher")
+
+  @@map("mobility_type")
+}
+
+// ─── Models ──────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(BROKER)
+  providerId   String?  @map("provider_id")
+  provider     Provider? @relation(fields: [providerId], references: [id])
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  createdTrips  Trip[]              @relation("TripCreator")
+  statusChanges TripStatusHistory[]
+  notes         Note[]
+
+  @@map("users")
+}
+
+model Provider {
+  id           String         @id @default(cuid())
+  name         String
+  contactName  String         @map("contact_name")
+  phone        String
+  email        String
+  serviceAreas String[]       @map("service_areas")
+  vehicleTypes MobilityType[] @map("vehicle_types")
+  active       Boolean        @default(true)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  users User[]
+  trips Trip[]
+
+  @@map("providers")
+}
+
+model Trip {
+  id                  String       @id @default(cuid())
+  tripNumber          String       @unique @map("trip_number")
+  patientName         String       @map("patient_name")
+  patientPhone        String       @map("patient_phone")
+  pickupAddress       String       @map("pickup_address")
+  destinationAddress  String       @map("destination_address")
+  appointmentDate     DateTime     @map("appointment_date")
+  appointmentTime     String       @map("appointment_time")
+  mobilityType        MobilityType @map("mobility_type")
+  specialInstructions String       @default("") @map("special_instructions")
+  status              TripStatus   @default(PENDING)
+  providerId          String?      @map("provider_id")
+  provider            Provider?    @relation(fields: [providerId], references: [id])
+  createdById         String       @map("created_by_id")
+  createdBy           User         @relation("TripCreator", fields: [createdById], references: [id])
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  statusHistory TripStatusHistory[]
+  notes         Note[]
+
+  @@map("trips")
+}
+
+model TripStatusHistory {
+  id          String     @id @default(cuid())
+  tripId      String     @map("trip_id")
+  trip        Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  status      TripStatus
+  note        String?
+  changedById String     @map("changed_by_id")
+  changedBy   User       @relation(fields: [changedById], references: [id])
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@map("trip_status_history")
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  tripId    String   @map("trip_id")
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  content   String
+  authorId  String   @map("author_id")
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notes")
+}
