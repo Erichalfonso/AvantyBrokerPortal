@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/context/auth-context";
 import { Sidebar } from "@/components/sidebar";
+import { SessionTimeout } from "@/components/session-timeout";
 
 export default function DashboardLayout({
   children,
@@ -23,7 +24,8 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <main className="ml-64 p-8">{children}</main>
+      <SessionTimeout />
+      <main className="lg:ml-64 p-4 pt-16 lg:p-8 lg:pt-8">{children}</main>
     </div>
   );
 }

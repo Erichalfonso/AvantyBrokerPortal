@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
 
 export async function POST(
   request: NextRequest,
@@ -67,6 +68,8 @@ export async function POST(
       },
     },
   });
+
+  await logAudit("STATUS_CHANGED", "Trip", trip.id, session.user.id, `${trip.status} → ${status}`);
 
   return NextResponse.json(updated);
 }

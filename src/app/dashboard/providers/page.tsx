@@ -87,7 +87,9 @@ export default function ProvidersPage() {
             <div key={provider.id} className="bg-card rounded-xl border border-border shadow-sm p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-navy">{provider.name}</h2>
+                  <Link href={`/dashboard/providers/${provider.id}`} className="text-lg font-semibold text-navy hover:text-teal transition-colors">
+                    {provider.name}
+                  </Link>
                   <p className="text-sm text-muted">{provider.contactName}</p>
                 </div>
                 <span

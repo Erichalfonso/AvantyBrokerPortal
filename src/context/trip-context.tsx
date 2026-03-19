@@ -36,9 +36,17 @@ interface TripData {
   }[];
 }
 
+interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 interface TripContextType {
   trips: TripData[];
   loading: boolean;
+  pagination: Pagination;
   fetchTrips: (params?: Record<string, string>) => Promise<void>;
   addTrip: (data: Record<string, string>) => Promise<TripData | null>;
   updateTripStatus: (tripId: string, status: string, note?: string) => Promise<boolean>;
@@ -86,6 +94,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [trips, setTrips] = useState<TripData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [useMock, setUseMock] = useState(false);
   const [mockState, setMockState] = useState([...mockTrips]);
 
@@ -93,10 +102,11 @@ export function TripProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const query = new URLSearchParams(params || {}).toString();
-      const res = await fetch(`/api/trips${query ? `?${query}` : ""}`);
+      const res = await fetch(`/api/trips${query ? `?${query}` : ""}`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setTrips(data.trips);
+        if (data.pagination) setPagination(data.pagination);
         setUseMock(false);
         setLoading(false);
         return;
@@ -251,7 +261,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   }, [mockState, useMock, user]);
 
   return (
-    <TripContext.Provider value={{ trips, loading, fetchTrips, addTrip, updateTripStatus, assignProvider, getTrip, useMock }}>
+    <TripContext.Provider value={{ trips, loading, pagination, fetchTrips, addTrip, updateTripStatus, assignProvider, getTrip, useMock }}>
       {children}
     </TripContext.Provider>
   );

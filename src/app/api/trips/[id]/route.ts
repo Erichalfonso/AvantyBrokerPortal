@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logAccess } from "@/lib/access-log";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(
   request: NextRequest,
@@ -33,6 +35,9 @@ export async function GET(
   if (session.user.role === "provider" && trip.providerId !== session.user.providerId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  // HIPAA: Log access to PHI
+  await logAccess("Trip", trip.id, session.user.id);
 
   return NextResponse.json(trip);
 }
@@ -81,6 +86,8 @@ export async function PUT(
       },
     },
   });
+
+  await logAudit("TRIP_UPDATED", "Trip", trip.id, session.user.id, `Fields updated: ${Object.keys(body).join(", ")}`);
 
   return NextResponse.json(updated);
 }

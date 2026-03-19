@@ -9,24 +9,33 @@ import Link from "next/link";
 
 export default function TripsPage() {
   const { user } = useAuth();
-  const { trips, loading, fetchTrips } = useTrips();
+  const { trips, loading, pagination, fetchTrips } = useTrips();
   const [statusFilter, setStatusFilter] = useState<TripStatus | "all">("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   // Debounce search
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Fetch with filters
+  // Reset page on filter change
   useEffect(() => {
-    const params: Record<string, string> = {};
+    setPage(1);
+  }, [statusFilter]);
+
+  // Fetch with filters and pagination
+  useEffect(() => {
+    const params: Record<string, string> = { page: String(page), limit: "20" };
     if (statusFilter !== "all") params.status = statusFilter;
     if (debouncedSearch) params.search = debouncedSearch;
     fetchTrips(params);
-  }, [statusFilter, debouncedSearch, fetchTrips]);
+  }, [statusFilter, debouncedSearch, page, fetchTrips]);
 
   return (
     <div>
@@ -35,7 +44,7 @@ export default function TripsPage() {
           <h1 className="text-2xl font-bold text-navy">
             {user?.role === "provider" ? "My Trips" : "All Trips"}
           </h1>
-          <p className="text-muted mt-1">{trips.length} trips found</p>
+          <p className="text-muted mt-1">{pagination.total} trips total</p>
         </div>
         {user?.role !== "provider" && (
           <Link
@@ -121,6 +130,47 @@ export default function TripsPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-sm text-muted">
+            Showing {(pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Previous
+            </button>
+            {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
+              const pageNum = i + 1;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                    page === pageNum
+                      ? "bg-teal text-white"
+                      : "border border-border hover:bg-background"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+              disabled={page === pagination.totalPages}
+              className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
