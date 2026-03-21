@@ -7,18 +7,13 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log("Seeding database...");
+  console.log("Seeding database (idempotent)...");
 
-  // Clean existing data
-  await prisma.note.deleteMany();
-  await prisma.tripStatusHistory.deleteMany();
-  await prisma.trip.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.provider.deleteMany();
-
-  // Create providers
-  const safeRide = await prisma.provider.create({
-    data: {
+  // Create providers (upsert — won't overwrite existing data)
+  const safeRide = await prisma.provider.upsert({
+    where: { id: "p1" },
+    update: {},
+    create: {
       id: "p1",
       name: "SafeRide Transport",
       contactName: "David Johnson",
@@ -30,8 +25,10 @@ async function main() {
     },
   });
 
-  const careWheels = await prisma.provider.create({
-    data: {
+  const careWheels = await prisma.provider.upsert({
+    where: { id: "p2" },
+    update: {},
+    create: {
       id: "p2",
       name: "CareWheels LLC",
       contactName: "Sarah Mitchell",
@@ -43,8 +40,10 @@ async function main() {
     },
   });
 
-  await prisma.provider.create({
-    data: {
+  await prisma.provider.upsert({
+    where: { id: "p3" },
+    update: {},
+    create: {
       id: "p3",
       name: "MedMove Services",
       contactName: "Robert Williams",
@@ -56,13 +55,15 @@ async function main() {
     },
   });
 
-  // Create users
+  // Create users (upsert by email — won't overwrite existing data)
   const brokerHash = await bcrypt.hash("broker123", 10);
   const adminHash = await bcrypt.hash("admin123", 10);
   const providerHash = await bcrypt.hash("provider123", 10);
 
-  const maria = await prisma.user.create({
-    data: {
+  const maria = await prisma.user.upsert({
+    where: { email: "maria@avantycare.com" },
+    update: {},
+    create: {
       id: "u1",
       name: "Maria Lopez",
       email: "maria@avantycare.com",
@@ -71,8 +72,10 @@ async function main() {
     },
   });
 
-  const james = await prisma.user.create({
-    data: {
+  const james = await prisma.user.upsert({
+    where: { email: "james@avantycare.com" },
+    update: {},
+    create: {
       id: "u2",
       name: "James Carter",
       email: "james@avantycare.com",
@@ -81,8 +84,10 @@ async function main() {
     },
   });
 
-  await prisma.user.create({
-    data: {
+  await prisma.user.upsert({
+    where: { email: "admin@avantycare.com" },
+    update: {},
+    create: {
       id: "u3",
       name: "Admin User",
       email: "admin@avantycare.com",
@@ -91,8 +96,10 @@ async function main() {
     },
   });
 
-  const safeRideUser = await prisma.user.create({
-    data: {
+  const safeRideUser = await prisma.user.upsert({
+    where: { email: "dispatch@saferide.com" },
+    update: {},
+    create: {
       id: "u4",
       name: "SafeRide Transport",
       email: "dispatch@saferide.com",
@@ -102,8 +109,10 @@ async function main() {
     },
   });
 
-  const careWheelsUser = await prisma.user.create({
-    data: {
+  const careWheelsUser = await prisma.user.upsert({
+    where: { email: "ops@carewheels.com" },
+    update: {},
+    create: {
       id: "u5",
       name: "CareWheels LLC",
       email: "ops@carewheels.com",
@@ -113,152 +122,158 @@ async function main() {
     },
   });
 
-  // Create trips with status history
-  await prisma.trip.create({
-    data: {
-      tripNumber: "T-1001",
-      patientName: "John Martinez",
-      patientPhone: "(555) 111-2222",
-      pickupAddress: "123 SW 8th St, Miami, FL 33130",
-      destinationAddress: "Jackson Memorial Hospital, 1611 NW 12th Ave, Miami, FL 33136",
-      appointmentDate: new Date("2026-03-17"),
-      appointmentTime: "09:00",
-      mobilityType: MobilityType.AMBULATORY,
-      specialInstructions: "Patient needs assistance walking. Please arrive 15 min early.",
-      status: TripStatus.ACCEPTED,
-      providerId: safeRide.id,
-      createdById: maria.id,
-      statusHistory: {
-        create: [
-          { status: TripStatus.PENDING, changedById: maria.id, createdAt: new Date("2026-03-15T10:30:00Z") },
-          { status: TripStatus.ASSIGNED, changedById: maria.id, note: "Assigned to SafeRide", createdAt: new Date("2026-03-15T11:00:00Z") },
-          { status: TripStatus.ACCEPTED, changedById: safeRideUser.id, createdAt: new Date("2026-03-15T14:00:00Z") },
-        ],
+  // Create sample trips only if they don't exist
+  const existingTrips = await prisma.trip.count();
+  if (existingTrips === 0) {
+    await prisma.trip.create({
+      data: {
+        tripNumber: "T-1001",
+        patientName: "John Martinez",
+        patientPhone: "(555) 111-2222",
+        pickupAddress: "123 SW 8th St, Miami, FL 33130",
+        destinationAddress: "Jackson Memorial Hospital, 1611 NW 12th Ave, Miami, FL 33136",
+        appointmentDate: new Date("2026-03-17"),
+        appointmentTime: "09:00",
+        mobilityType: MobilityType.AMBULATORY,
+        specialInstructions: "Patient needs assistance walking. Please arrive 15 min early.",
+        status: TripStatus.ACCEPTED,
+        providerId: safeRide.id,
+        createdById: maria.id,
+        statusHistory: {
+          create: [
+            { status: TripStatus.PENDING, changedById: maria.id, createdAt: new Date("2026-03-15T10:30:00Z") },
+            { status: TripStatus.ASSIGNED, changedById: maria.id, note: "Assigned to SafeRide", createdAt: new Date("2026-03-15T11:00:00Z") },
+            { status: TripStatus.ACCEPTED, changedById: safeRideUser.id, createdAt: new Date("2026-03-15T14:00:00Z") },
+          ],
+        },
       },
-    },
-  });
+    });
 
-  await prisma.trip.create({
-    data: {
-      tripNumber: "T-1002",
-      patientName: "Rosa Gonzalez",
-      patientPhone: "(555) 222-3333",
-      pickupAddress: "456 NW 27th Ave, Miami, FL 33125",
-      destinationAddress: "Baptist Health South Florida, 8900 N Kendall Dr, Miami, FL 33176",
-      appointmentDate: new Date("2026-03-17"),
-      appointmentTime: "10:30",
-      mobilityType: MobilityType.WHEELCHAIR,
-      specialInstructions: "Wheelchair-accessible vehicle required. Return trip needed.",
-      status: TripStatus.ASSIGNED,
-      providerId: careWheels.id,
-      createdById: maria.id,
-      statusHistory: {
-        create: [
-          { status: TripStatus.PENDING, changedById: maria.id, createdAt: new Date("2026-03-15T11:00:00Z") },
-          { status: TripStatus.ASSIGNED, changedById: maria.id, note: "Assigned to CareWheels", createdAt: new Date("2026-03-15T11:45:00Z") },
-        ],
+    await prisma.trip.create({
+      data: {
+        tripNumber: "T-1002",
+        patientName: "Rosa Gonzalez",
+        patientPhone: "(555) 222-3333",
+        pickupAddress: "456 NW 27th Ave, Miami, FL 33125",
+        destinationAddress: "Baptist Health South Florida, 8900 N Kendall Dr, Miami, FL 33176",
+        appointmentDate: new Date("2026-03-17"),
+        appointmentTime: "10:30",
+        mobilityType: MobilityType.WHEELCHAIR,
+        specialInstructions: "Wheelchair-accessible vehicle required. Return trip needed.",
+        status: TripStatus.ASSIGNED,
+        providerId: careWheels.id,
+        createdById: maria.id,
+        statusHistory: {
+          create: [
+            { status: TripStatus.PENDING, changedById: maria.id, createdAt: new Date("2026-03-15T11:00:00Z") },
+            { status: TripStatus.ASSIGNED, changedById: maria.id, note: "Assigned to CareWheels", createdAt: new Date("2026-03-15T11:45:00Z") },
+          ],
+        },
       },
-    },
-  });
+    });
 
-  await prisma.trip.create({
-    data: {
-      tripNumber: "T-1003",
-      patientName: "William Chen",
-      patientPhone: "(555) 333-4444",
-      pickupAddress: "789 Brickell Ave, Miami, FL 33131",
-      destinationAddress: "Mount Sinai Medical Center, 4300 Alton Rd, Miami Beach, FL 33140",
-      appointmentDate: new Date("2026-03-17"),
-      appointmentTime: "14:00",
-      mobilityType: MobilityType.STRETCHER,
-      specialInstructions: "Stretcher transport. Patient is non-ambulatory. Two-person assist required.",
-      status: TripStatus.PENDING,
-      createdById: james.id,
-      statusHistory: {
-        create: [
-          { status: TripStatus.PENDING, changedById: james.id, createdAt: new Date("2026-03-16T08:00:00Z") },
-        ],
+    await prisma.trip.create({
+      data: {
+        tripNumber: "T-1003",
+        patientName: "William Chen",
+        patientPhone: "(555) 333-4444",
+        pickupAddress: "789 Brickell Ave, Miami, FL 33131",
+        destinationAddress: "Mount Sinai Medical Center, 4300 Alton Rd, Miami Beach, FL 33140",
+        appointmentDate: new Date("2026-03-17"),
+        appointmentTime: "14:00",
+        mobilityType: MobilityType.STRETCHER,
+        specialInstructions: "Stretcher transport. Patient is non-ambulatory. Two-person assist required.",
+        status: TripStatus.PENDING,
+        createdById: james.id,
+        statusHistory: {
+          create: [
+            { status: TripStatus.PENDING, changedById: james.id, createdAt: new Date("2026-03-16T08:00:00Z") },
+          ],
+        },
       },
-    },
-  });
+    });
 
-  await prisma.trip.create({
-    data: {
-      tripNumber: "T-1004",
-      patientName: "Angela Davis",
-      patientPhone: "(555) 444-5555",
-      pickupAddress: "321 Collins Ave, Miami Beach, FL 33139",
-      destinationAddress: "University of Miami Hospital, 1400 NW 12th Ave, Miami, FL 33136",
-      appointmentDate: new Date("2026-03-16"),
-      appointmentTime: "08:00",
-      mobilityType: MobilityType.AMBULATORY,
-      specialInstructions: "",
-      status: TripStatus.COMPLETED,
-      providerId: safeRide.id,
-      createdById: maria.id,
-      statusHistory: {
-        create: [
-          { status: TripStatus.PENDING, changedById: maria.id, createdAt: new Date("2026-03-14T16:00:00Z") },
-          { status: TripStatus.ASSIGNED, changedById: maria.id, createdAt: new Date("2026-03-14T16:30:00Z") },
-          { status: TripStatus.ACCEPTED, changedById: safeRideUser.id, createdAt: new Date("2026-03-14T17:00:00Z") },
-          { status: TripStatus.DRIVER_EN_ROUTE, changedById: safeRideUser.id, createdAt: new Date("2026-03-16T07:30:00Z") },
-          { status: TripStatus.PASSENGER_PICKED_UP, changedById: safeRideUser.id, createdAt: new Date("2026-03-16T07:55:00Z") },
-          { status: TripStatus.COMPLETED, changedById: safeRideUser.id, createdAt: new Date("2026-03-16T08:40:00Z") },
-        ],
+    await prisma.trip.create({
+      data: {
+        tripNumber: "T-1004",
+        patientName: "Angela Davis",
+        patientPhone: "(555) 444-5555",
+        pickupAddress: "321 Collins Ave, Miami Beach, FL 33139",
+        destinationAddress: "University of Miami Hospital, 1400 NW 12th Ave, Miami, FL 33136",
+        appointmentDate: new Date("2026-03-16"),
+        appointmentTime: "08:00",
+        mobilityType: MobilityType.AMBULATORY,
+        specialInstructions: "",
+        status: TripStatus.COMPLETED,
+        providerId: safeRide.id,
+        createdById: maria.id,
+        statusHistory: {
+          create: [
+            { status: TripStatus.PENDING, changedById: maria.id, createdAt: new Date("2026-03-14T16:00:00Z") },
+            { status: TripStatus.ASSIGNED, changedById: maria.id, createdAt: new Date("2026-03-14T16:30:00Z") },
+            { status: TripStatus.ACCEPTED, changedById: safeRideUser.id, createdAt: new Date("2026-03-14T17:00:00Z") },
+            { status: TripStatus.DRIVER_EN_ROUTE, changedById: safeRideUser.id, createdAt: new Date("2026-03-16T07:30:00Z") },
+            { status: TripStatus.PASSENGER_PICKED_UP, changedById: safeRideUser.id, createdAt: new Date("2026-03-16T07:55:00Z") },
+            { status: TripStatus.COMPLETED, changedById: safeRideUser.id, createdAt: new Date("2026-03-16T08:40:00Z") },
+          ],
+        },
       },
-    },
-  });
+    });
 
-  await prisma.trip.create({
-    data: {
-      tripNumber: "T-1005",
-      patientName: "Michael Torres",
-      patientPhone: "(555) 555-6666",
-      pickupAddress: "555 NE 15th St, Fort Lauderdale, FL 33304",
-      destinationAddress: "Broward Health Medical Center, 1600 S Andrews Ave, Fort Lauderdale, FL 33316",
-      appointmentDate: new Date("2026-03-18"),
-      appointmentTime: "11:00",
-      mobilityType: MobilityType.AMBULATORY,
-      specialInstructions: "Patient is hearing impaired. Please text upon arrival.",
-      status: TripStatus.PENDING,
-      createdById: james.id,
-      statusHistory: {
-        create: [
-          { status: TripStatus.PENDING, changedById: james.id, createdAt: new Date("2026-03-16T09:00:00Z") },
-        ],
+    await prisma.trip.create({
+      data: {
+        tripNumber: "T-1005",
+        patientName: "Michael Torres",
+        patientPhone: "(555) 555-6666",
+        pickupAddress: "555 NE 15th St, Fort Lauderdale, FL 33304",
+        destinationAddress: "Broward Health Medical Center, 1600 S Andrews Ave, Fort Lauderdale, FL 33316",
+        appointmentDate: new Date("2026-03-18"),
+        appointmentTime: "11:00",
+        mobilityType: MobilityType.AMBULATORY,
+        specialInstructions: "Patient is hearing impaired. Please text upon arrival.",
+        status: TripStatus.PENDING,
+        createdById: james.id,
+        statusHistory: {
+          create: [
+            { status: TripStatus.PENDING, changedById: james.id, createdAt: new Date("2026-03-16T09:00:00Z") },
+          ],
+        },
       },
-    },
-  });
+    });
 
-  await prisma.trip.create({
-    data: {
-      tripNumber: "T-1006",
-      patientName: "Patricia Brown",
-      patientPhone: "(555) 666-7777",
-      pickupAddress: "890 Palm Ave, Hialeah, FL 33010",
-      destinationAddress: "Palmetto General Hospital, 2001 W 68th St, Hialeah, FL 33016",
-      appointmentDate: new Date("2026-03-16"),
-      appointmentTime: "13:00",
-      mobilityType: MobilityType.WHEELCHAIR,
-      specialInstructions: "Patient uses motorized wheelchair. Van transport required.",
-      status: TripStatus.DRIVER_EN_ROUTE,
-      providerId: careWheels.id,
-      createdById: maria.id,
-      statusHistory: {
-        create: [
-          { status: TripStatus.PENDING, changedById: maria.id, createdAt: new Date("2026-03-15T09:00:00Z") },
-          { status: TripStatus.ASSIGNED, changedById: maria.id, createdAt: new Date("2026-03-15T09:30:00Z") },
-          { status: TripStatus.ACCEPTED, changedById: careWheelsUser.id, createdAt: new Date("2026-03-15T10:00:00Z") },
-          { status: TripStatus.DRIVER_EN_ROUTE, changedById: careWheelsUser.id, createdAt: new Date("2026-03-16T12:30:00Z") },
-        ],
+    await prisma.trip.create({
+      data: {
+        tripNumber: "T-1006",
+        patientName: "Patricia Brown",
+        patientPhone: "(555) 666-7777",
+        pickupAddress: "890 Palm Ave, Hialeah, FL 33010",
+        destinationAddress: "Palmetto General Hospital, 2001 W 68th St, Hialeah, FL 33016",
+        appointmentDate: new Date("2026-03-16"),
+        appointmentTime: "13:00",
+        mobilityType: MobilityType.WHEELCHAIR,
+        specialInstructions: "Patient uses motorized wheelchair. Van transport required.",
+        status: TripStatus.DRIVER_EN_ROUTE,
+        providerId: careWheels.id,
+        createdById: maria.id,
+        statusHistory: {
+          create: [
+            { status: TripStatus.PENDING, changedById: maria.id, createdAt: new Date("2026-03-15T09:00:00Z") },
+            { status: TripStatus.ASSIGNED, changedById: maria.id, createdAt: new Date("2026-03-15T09:30:00Z") },
+            { status: TripStatus.ACCEPTED, changedById: careWheelsUser.id, createdAt: new Date("2026-03-15T10:00:00Z") },
+            { status: TripStatus.DRIVER_EN_ROUTE, changedById: careWheelsUser.id, createdAt: new Date("2026-03-16T12:30:00Z") },
+          ],
+        },
       },
-    },
-  });
+    });
+
+    console.log("  - 6 sample trips created");
+  } else {
+    console.log("  - Trips already exist, skipping sample trip creation");
+  }
 
   console.log("Seed complete!");
-  console.log("  - 3 providers created");
-  console.log("  - 5 users created");
-  console.log("  - 6 trips created with status history");
+  console.log("  - 3 providers upserted");
+  console.log("  - 5 users upserted");
 }
 
 main()
