@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, ReactNode, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 interface AuthUser {
   id: string;
@@ -35,41 +35,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     try {
-      // Get CSRF token
-      const csrfRes = await fetch("/api/auth/csrf", { credentials: "include" });
-      const { csrfToken } = await csrfRes.json();
-
-      // Submit credentials - let browser handle cookies naturally
-      const res = await fetch("/api/auth/callback/credentials", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ csrfToken, email, password }),
-        credentials: "include",
-        redirect: "follow",
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
       });
 
-      // After redirect, check if we got a valid session
-      const sessionRes = await fetch("/api/auth/session", { credentials: "include" });
-      const sessionData = await sessionRes.json();
-      return !!sessionData?.user;
-    } catch (err) {
-      console.error("Login error:", err);
+      if (result?.error) {
+        return false;
+      }
+
+      // signIn succeeded — force a full page load to pick up the session cookie
+      return true;
+    } catch {
       return false;
     }
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      const csrfRes = await fetch("/api/auth/csrf", { credentials: "include" });
-      const { csrfToken } = await csrfRes.json();
-      await fetch("/api/auth/signout", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ csrfToken }),
-        credentials: "include",
-        redirect: "follow",
-      });
-    } catch { /* ignore */ }
+    await signOut({ redirect: false });
     window.location.href = "/";
   }, []);
 
