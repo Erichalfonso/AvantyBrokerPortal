@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, ReactNode, useCallback } from "react";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 
 interface AuthUser {
   id: string;
@@ -35,25 +35,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
+      // POST directly to the credentials callback with redirect: manual
+      // to get reliable success/failure detection in NextAuth v5
+      const csrfRes = await fetch("/api/auth/csrf");
+      const { csrfToken } = await csrfRes.json();
+
+      const res = await fetch("/api/auth/callback/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          csrfToken,
+          email,
+          password,
+        }),
+        redirect: "follow",
+        credentials: "include",
       });
 
-      // NextAuth v5 beta: signIn returns a URL string on success, or an object/undefined on failure
-      if (!result || (typeof result === "object" && result.error)) {
+      // After following redirects, check if we ended up on an error page
+      if (res.url?.includes("error")) {
         return false;
       }
 
-      // If we got a non-error response, verify the session was actually created
-      const sessionRes = await fetch("/api/auth/session");
-      const session = await sessionRes.json();
-      if (!session?.user) {
-        return false;
-      }
-
-      return true;
+      // Verify session cookie was set
+      const sessionRes = await fetch("/api/auth/session", {
+        credentials: "include",
+      });
+      const sessionData = await sessionRes.json();
+      return !!sessionData?.user;
     } catch (err) {
       console.error("[auth] Login error:", err);
       return false;
