@@ -121,36 +121,38 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo Quick Login */}
-          <div className="mt-8 pt-6 border-t border-border">
-            <p className="text-sm text-muted mb-3">Demo Quick Login:</p>
-            <div className="space-y-2">
-              <button
-                onClick={() => quickLogin("maria@avantycare.com", "broker123")}
-                disabled={loading}
-                className="w-full py-2 px-4 text-sm text-left rounded-lg border border-border hover:bg-teal/5 hover:border-teal transition-colors disabled:opacity-50"
-              >
-                <span className="font-medium text-navy">Broker Staff</span>
-                <span className="text-muted ml-2">- Maria Lopez</span>
-              </button>
-              <button
-                onClick={() => quickLogin("dispatch@saferide.com", "provider123")}
-                disabled={loading}
-                className="w-full py-2 px-4 text-sm text-left rounded-lg border border-border hover:bg-teal/5 hover:border-teal transition-colors disabled:opacity-50"
-              >
-                <span className="font-medium text-navy">Provider</span>
-                <span className="text-muted ml-2">- SafeRide Transport</span>
-              </button>
-              <button
-                onClick={() => quickLogin("admin@avantycare.com", "admin123")}
-                disabled={loading}
-                className="w-full py-2 px-4 text-sm text-left rounded-lg border border-border hover:bg-teal/5 hover:border-teal transition-colors disabled:opacity-50"
-              >
-                <span className="font-medium text-navy">Admin</span>
-                <span className="text-muted ml-2">- Admin User</span>
-              </button>
+          {/* Demo Quick Login - only visible in development */}
+          {process.env.NODE_ENV === "development" && (
+            <div className="mt-8 pt-6 border-t border-border">
+              <p className="text-sm text-muted mb-3">Demo Quick Login:</p>
+              <div className="space-y-2">
+                <button
+                  onClick={() => quickLogin("maria@avantycare.com", "broker123")}
+                  disabled={loading}
+                  className="w-full py-2 px-4 text-sm text-left rounded-lg border border-border hover:bg-teal/5 hover:border-teal transition-colors disabled:opacity-50"
+                >
+                  <span className="font-medium text-navy">Broker Staff</span>
+                  <span className="text-muted ml-2">- Maria Lopez</span>
+                </button>
+                <button
+                  onClick={() => quickLogin("dispatch@saferide.com", "provider123")}
+                  disabled={loading}
+                  className="w-full py-2 px-4 text-sm text-left rounded-lg border border-border hover:bg-teal/5 hover:border-teal transition-colors disabled:opacity-50"
+                >
+                  <span className="font-medium text-navy">Provider</span>
+                  <span className="text-muted ml-2">- SafeRide Transport</span>
+                </button>
+                <button
+                  onClick={() => quickLogin("admin@avantycare.com", "admin123")}
+                  disabled={loading}
+                  className="w-full py-2 px-4 text-sm text-left rounded-lg border border-border hover:bg-teal/5 hover:border-teal transition-colors disabled:opacity-50"
+                >
+                  <span className="font-medium text-navy">Admin</span>
+                  <span className="text-muted ml-2">- Admin User</span>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

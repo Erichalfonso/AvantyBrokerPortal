@@ -47,12 +47,20 @@ export default function TripsPage() {
           <p className="text-muted mt-1">{pagination.total} trips total</p>
         </div>
         {user?.role !== "provider" && (
-          <Link
-            href="/dashboard/trips/new"
-            className="px-4 py-2 bg-teal hover:bg-teal-dark text-white font-medium rounded-lg transition-colors"
-          >
-            + New Trip
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href="/dashboard/trips/import"
+              className="px-4 py-2 border border-teal text-teal hover:bg-teal hover:text-white font-medium rounded-lg transition-colors"
+            >
+              Import
+            </Link>
+            <Link
+              href="/dashboard/trips/new"
+              className="px-4 py-2 bg-teal hover:bg-teal-dark text-white font-medium rounded-lg transition-colors"
+            >
+              + New Trip
+            </Link>
+          </div>
         )}
       </div>
 
