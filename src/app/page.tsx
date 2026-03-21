@@ -16,11 +16,16 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const success = await login(email, password);
-    if (success) {
-      window.location.href = "/dashboard";
-    } else {
-      setError("Invalid email or password.");
+    try {
+      const success = await login(email, password);
+      if (success) {
+        window.location.href = "/dashboard";
+      } else {
+        setError("Invalid email or password.");
+        setLoading(false);
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
       setLoading(false);
     }
   };
@@ -28,11 +33,18 @@ export default function LoginPage() {
   const quickLogin = async (quickEmail: string, quickPassword: string) => {
     setEmail(quickEmail);
     setPassword(quickPassword);
+    setError("");
     setLoading(true);
-    const success = await login(quickEmail, quickPassword);
-    if (success) {
-      window.location.href = "/dashboard";
-    } else {
+    try {
+      const success = await login(quickEmail, quickPassword);
+      if (success) {
+        window.location.href = "/dashboard";
+      } else {
+        setError("Invalid email or password.");
+        setLoading(false);
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
       setLoading(false);
     }
   };

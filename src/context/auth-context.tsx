@@ -41,13 +41,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         redirect: false,
       });
 
-      if (result?.error) {
+      // NextAuth v5 beta: signIn returns a URL string on success, or an object/undefined on failure
+      if (!result || (typeof result === "object" && result.error)) {
         return false;
       }
 
-      // signIn succeeded — force a full page load to pick up the session cookie
+      // If we got a non-error response, verify the session was actually created
+      const sessionRes = await fetch("/api/auth/session");
+      const session = await sessionRes.json();
+      if (!session?.user) {
+        return false;
+      }
+
       return true;
-    } catch {
+    } catch (err) {
+      console.error("[auth] Login error:", err);
       return false;
     }
   }, []);
