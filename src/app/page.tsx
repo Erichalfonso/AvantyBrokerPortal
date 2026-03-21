@@ -22,16 +22,20 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    console.log("[login] Starting login for:", email);
 
     try {
       const success = await login(email, password);
+      console.log("[login] Result:", success);
       if (success) {
+        console.log("[login] Redirecting to /dashboard");
         window.location.href = "/dashboard";
       } else {
         setError("Invalid email or password.");
         setLoading(false);
       }
-    } catch {
+    } catch (err) {
+      console.error("[login] Exception:", err);
       setError("Something went wrong. Please try again.");
       setLoading(false);
     }
