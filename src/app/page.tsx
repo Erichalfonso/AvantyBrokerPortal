@@ -2,23 +2,21 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const authError = searchParams.get("error");
-    if (authError) {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error")) {
       setError("Authentication failed. Please try again.");
     }
-  }, [searchParams]);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
