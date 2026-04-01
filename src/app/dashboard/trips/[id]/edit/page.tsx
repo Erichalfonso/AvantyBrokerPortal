@@ -38,7 +38,7 @@ export default function EditTripPage() {
   });
 
   useEffect(() => {
-    fetch(`/api/trips/${params.id}`, { credentials: "include" })
+    fetch((`/api/trips/${params.id}`), { credentials: "include" })
       .then((r) => r.json())
       .then((trip: TripData) => {
         setForm({
@@ -74,7 +74,7 @@ export default function EditTripPage() {
     setSubmitting(true);
     setError("");
 
-    const res = await fetch(`/api/trips/${params.id}`, {
+    const res = await fetch((`/api/trips/${params.id}`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

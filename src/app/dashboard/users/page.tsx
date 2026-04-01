@@ -27,6 +27,7 @@ export default function UsersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [createdCredentials, setCreatedCredentials] = useState<{ name: string; email: string; password: string; role: string } | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -37,7 +38,7 @@ export default function UsersPage() {
   });
 
   const fetchUsers = useCallback(async () => {
-    const res = await fetch("/api/users", { credentials: "include" });
+    const res = await fetch(("/api/users"), { credentials: "include" });
     if (res.ok) setUsers(await res.json());
     setLoading(false);
   }, []);
@@ -45,7 +46,7 @@ export default function UsersPage() {
   useEffect(() => {
     if (user?.role === "admin") {
       fetchUsers();
-      fetch("/api/providers", { credentials: "include" })
+      fetch(("/api/providers"), { credentials: "include" })
         .then((r) => r.ok ? r.json() : [])
         .then(setProviders)
         .catch(() => {});
@@ -71,7 +72,7 @@ export default function UsersPage() {
     setError("");
     setSuccess("");
 
-    const res = await fetch("/api/users", {
+    const res = await fetch(("/api/users"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -85,6 +86,7 @@ export default function UsersPage() {
     });
 
     if (res.ok) {
+      setCreatedCredentials({ name: form.name, email: form.email, password: form.password, role: form.role });
       setSuccess(`Account created for ${form.email}`);
       setForm({ name: "", email: "", password: "", role: "broker", providerId: "" });
       setShowForm(false);
@@ -117,7 +119,37 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {success && (
+      {createdCredentials && (
+        <div className="mb-6 bg-green-50 border border-success/30 rounded-xl p-6">
+          <div className="flex items-start justify-between mb-3">
+            <h3 className="text-sm font-semibold text-success uppercase tracking-wider">Account Created Successfully</h3>
+            <button
+              onClick={() => setCreatedCredentials(null)}
+              className="text-muted hover:text-navy text-sm"
+            >
+              Dismiss
+            </button>
+          </div>
+          <p className="text-sm text-navy mb-3">Share these credentials with the new user:</p>
+          <div className="bg-white rounded-lg border border-border p-4 font-mono text-sm space-y-1">
+            <p><span className="text-muted">Name:</span> <span className="text-navy">{createdCredentials.name}</span></p>
+            <p><span className="text-muted">Email:</span> <span className="text-navy">{createdCredentials.email}</span></p>
+            <p><span className="text-muted">Password:</span> <span className="text-navy">{createdCredentials.password}</span></p>
+            <p><span className="text-muted">Role:</span> <span className="text-navy capitalize">{createdCredentials.role}</span></p>
+          </div>
+          <button
+            onClick={() => {
+              const text = `Login Credentials\nName: ${createdCredentials.name}\nEmail: ${createdCredentials.email}\nPassword: ${createdCredentials.password}\nRole: ${createdCredentials.role}`;
+              navigator.clipboard.writeText(text);
+            }}
+            className="mt-3 px-4 py-2 text-sm bg-navy hover:bg-navy-dark text-white font-medium rounded-lg transition-colors"
+          >
+            Copy Credentials
+          </button>
+        </div>
+      )}
+
+      {success && !createdCredentials && (
         <div className="mb-6 p-4 bg-green-50 border border-success/30 rounded-xl text-sm text-success">
           {success}
         </div>

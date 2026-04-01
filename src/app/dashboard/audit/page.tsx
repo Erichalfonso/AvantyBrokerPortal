@@ -35,7 +35,7 @@ export default function AuditLogPage() {
     const params = new URLSearchParams({ page: String(page), limit: "30" });
     if (filterAction) params.set("action", filterAction);
 
-    const res = await fetch(`/api/audit?${params}`, { credentials: "include" });
+    const res = await fetch((`/api/audit?${params}`), { credentials: "include" });
     if (res.ok) {
       const data = await res.json();
       setLogs(data.logs);

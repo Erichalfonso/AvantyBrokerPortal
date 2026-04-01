@@ -37,7 +37,7 @@ export default function ProviderDetailPage() {
   const isAdmin = user?.role === "admin";
 
   const fetchProvider = useCallback(async () => {
-    const res = await fetch(`/api/providers/${params.id}`, { credentials: "include" });
+    const res = await fetch((`/api/providers/${params.id}`), { credentials: "include" });
     if (res.ok) setProvider(await res.json());
     setLoading(false);
   }, [params.id]);
@@ -45,7 +45,7 @@ export default function ProviderDetailPage() {
   useEffect(() => {
     fetchProvider();
     if (isAdmin) {
-      fetch("/api/users", { credentials: "include" })
+      fetch(("/api/users"), { credentials: "include" })
         .then((r) => r.ok ? r.json() : [])
         .then(setAllUsers)
         .catch(() => {});
@@ -54,7 +54,7 @@ export default function ProviderDetailPage() {
 
   const addUser = async () => {
     if (!selectedUserId) return;
-    const res = await fetch(`/api/providers/${params.id}/users`, {
+    const res = await fetch((`/api/providers/${params.id}/users`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -67,7 +67,7 @@ export default function ProviderDetailPage() {
   };
 
   const removeUser = async (userId: string) => {
-    const res = await fetch(`/api/providers/${params.id}/users`, {
+    const res = await fetch((`/api/providers/${params.id}/users`), {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

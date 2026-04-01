@@ -25,7 +25,7 @@ export default function ProvidersPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchProviders = useCallback(() => {
-    fetch("/api/providers", { credentials: "include" })
+    fetch(("/api/providers"), { credentials: "include" })
       .then((r) => {
         if (!r.ok) throw new Error();
         return r.json();
@@ -45,7 +45,7 @@ export default function ProvidersPage() {
   }, [fetchProviders]);
 
   const toggleActive = async (providerId: string, currentActive: boolean) => {
-    const res = await fetch(`/api/providers/${providerId}`, {
+    const res = await fetch((`/api/providers/${providerId}`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

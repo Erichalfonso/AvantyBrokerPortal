@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useTrips } from "@/context/trip-context";
 import { StatusBadge } from "@/components/status-badge";
+import { RejectModal } from "@/components/reject-modal";
 import { MOBILITY_LABELS, TripStatus, TRIP_STATUS_LABELS, MobilityType } from "@/types";
 import { mockProviders } from "@/lib/mock-data";
 import Link from "next/link";
@@ -57,12 +58,13 @@ export default function TripDetailPage() {
   const [loading, setLoading] = useState(true);
   const [noteText, setNoteText] = useState("");
   const [addingNote, setAddingNote] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
 
   const { getTrip: getTripFromCtx } = useTrips();
 
   const fetchTrip = useCallback(async () => {
     try {
-      const res = await fetch(`/api/trips/${params.id}`);
+      const res = await fetch((`/api/trips/${params.id}`));
       if (res.ok) {
         setTrip(await res.json());
         setLoading(false);
@@ -77,7 +79,7 @@ export default function TripDetailPage() {
 
   useEffect(() => {
     fetchTrip();
-    fetch("/api/providers?active=true")
+    fetch(("/api/providers?active=true"))
       .then((r) => {
         if (!r.ok) throw new Error();
         return r.json();
@@ -133,7 +135,7 @@ export default function TripDetailPage() {
   const handleAddNote = async () => {
     if (!noteText.trim()) return;
     setAddingNote(true);
-    const res = await fetch(`/api/trips/${trip.tripNumber}/notes`, {
+    const res = await fetch((`/api/trips/${trip.tripNumber}/notes`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: noteText }),
@@ -181,10 +183,10 @@ export default function TripDetailPage() {
           )}
           {canReject && (
             <button
-              onClick={() => handleStatusChange("rejected")}
+              onClick={() => setShowRejectModal(true)}
               className="px-4 py-2 bg-danger hover:bg-red-600 text-white font-medium rounded-lg transition-colors"
             >
-              Reject
+              Decline
             </button>
           )}
           {canUpdateStatus && (
@@ -343,6 +345,18 @@ export default function TripDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Reject Modal */}
+      {showRejectModal && (
+        <RejectModal
+          tripNumber={trip.tripNumber}
+          onConfirm={(reason) => {
+            handleStatusChange("rejected", reason);
+            setShowRejectModal(false);
+          }}
+          onCancel={() => setShowRejectModal(false)}
+        />
+      )}
     </div>
   );
 }

@@ -102,7 +102,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const query = new URLSearchParams(params || {}).toString();
-      const res = await fetch(`/api/trips${query ? `?${query}` : ""}`, { credentials: "include" });
+      const res = await fetch((`/api/trips${query ? `?${query}` : ""}`), { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setTrips(data.trips);
@@ -136,7 +136,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const addTrip = async (data: Record<string, string>): Promise<TripData | null> => {
     if (!useMock) {
       try {
-        const res = await fetch("/api/trips", {
+        const res = await fetch(("/api/trips"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
@@ -176,7 +176,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const updateTripStatus = async (tripId: string, status: string, note?: string): Promise<boolean> => {
     if (!useMock) {
       try {
-        const res = await fetch(`/api/trips/${tripId}/status`, {
+        const res = await fetch((`/api/trips/${tripId}/status`), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status, note }),
@@ -206,7 +206,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const assignProvider = async (tripId: string, providerId: string): Promise<boolean> => {
     if (!useMock) {
       try {
-        const res = await fetch(`/api/trips/${tripId}/assign`, {
+        const res = await fetch((`/api/trips/${tripId}/assign`), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ providerId }),
@@ -239,7 +239,7 @@ export function TripProvider({ children }: { children: ReactNode }) {
   const getTrip = async (tripId: string): Promise<TripData | null> => {
     if (!useMock) {
       try {
-        const res = await fetch(`/api/trips/${tripId}`);
+        const res = await fetch((`/api/trips/${tripId}`));
         if (res.ok) return res.json();
       } catch { /* fall through */ }
     }

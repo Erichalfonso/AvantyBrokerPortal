@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
-    fetch("/api/dashboard/stats", { credentials: "include" })
+    fetch(("/api/dashboard/stats"), { credentials: "include" })
       .then((r) => r.ok ? r.json() : null)
       .then(setStats)
       .catch(() => {});
@@ -42,6 +42,8 @@ export default function DashboardPage() {
     providerStats: [],
   };
 
+  const isProvider = user?.role === "provider";
+  const pendingResponse = isProvider ? trips.filter((t) => t.status === "assigned") : [];
   const recentTrips = trips.slice(0, 5);
 
   return (
@@ -64,6 +66,33 @@ export default function DashboardPage() {
         <StatCard label="Completed" value={displayStats.completedTrips} color="bg-success" />
         <StatCard label="Cancelled" value={displayStats.cancelledTrips} color="bg-muted" />
       </div>
+
+      {/* Pending Assignments Alert (Providers) */}
+      {isProvider && pendingResponse.length > 0 && (
+        <div className="mb-8 bg-blue-50 border-2 border-blue-200 rounded-xl p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-lg font-bold">{pendingResponse.length}</span>
+              </div>
+              <div>
+                <h3 className="text-navy font-semibold">
+                  {pendingResponse.length === 1
+                    ? "1 trip awaiting your response"
+                    : `${pendingResponse.length} trips awaiting your response`}
+                </h3>
+                <p className="text-sm text-muted">Review and accept or decline assigned trips</p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard/trips"
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors text-sm"
+            >
+              Review Trips
+            </Link>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Status Breakdown */}

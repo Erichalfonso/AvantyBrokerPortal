@@ -46,7 +46,7 @@ export default function ImportTripsPage() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("/api/trips/import", {
+      const res = await fetch(("/api/trips/import"), {
         method: "POST",
         credentials: "include",
         body: formData,

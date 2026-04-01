@@ -47,7 +47,7 @@ export default function NewProviderPage() {
     setSubmitting(true);
     setError("");
 
-    const res = await fetch("/api/providers", {
+    const res = await fetch(("/api/providers"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

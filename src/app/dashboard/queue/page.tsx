@@ -35,8 +35,8 @@ export default function QueuePage() {
   const fetchQueue = useCallback(async () => {
     try {
       // Fetch pending trips
-      const pendingRes = await fetch("/api/trips?status=pending&limit=100", { credentials: "include" });
-      const rejectedRes = await fetch("/api/trips?status=rejected&limit=100", { credentials: "include" });
+      const pendingRes = await fetch(("/api/trips?status=pending&limit=100"), { credentials: "include" });
+      const rejectedRes = await fetch(("/api/trips?status=rejected&limit=100"), { credentials: "include" });
       const pending = pendingRes.ok ? (await pendingRes.json()).trips : [];
       const rejected = rejectedRes.ok ? (await rejectedRes.json()).trips : [];
 
@@ -51,7 +51,7 @@ export default function QueuePage() {
 
   useEffect(() => {
     fetchQueue();
-    fetch("/api/providers?active=true", { credentials: "include" })
+    fetch(("/api/providers?active=true"), { credentials: "include" })
       .then((r) => r.json())
       .then(setProviders)
       .catch(() => {});
@@ -59,7 +59,7 @@ export default function QueuePage() {
 
   const handleAssign = async (tripId: string, providerId: string) => {
     setAssigning(tripId);
-    const res = await fetch(`/api/trips/${tripId}/assign`, {
+    const res = await fetch((`/api/trips/${tripId}/assign`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
