@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { decryptPHI } from "@/lib/encryption";
+import { sendEmail, tripAssignedEmail } from "@/lib/email";
 
 export async function POST(
   request: NextRequest,
@@ -62,5 +64,14 @@ export async function POST(
 
   await logAudit("PROVIDER_ASSIGNED", "Trip", trip.id, session.user.id, `Assigned to ${provider.name}`);
 
-  return NextResponse.json(updated);
+  // Send email notification to provider
+  const email = tripAssignedEmail(
+    provider.name,
+    trip.tripNumber,
+    new Date(trip.appointmentDate).toLocaleDateString(),
+    trip.pickupAddress
+  );
+  sendEmail({ to: provider.email, ...email }).catch(() => {});
+
+  return NextResponse.json(decryptPHI(updated));
 }

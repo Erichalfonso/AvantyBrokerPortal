@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { encrypt } from "@/lib/encryption";
 import * as XLSX from "xlsx";
 
 export async function POST(request: NextRequest) {
@@ -85,8 +86,8 @@ export async function POST(request: NextRequest) {
       await prisma.trip.create({
         data: {
           tripNumber,
-          patientName,
-          patientPhone,
+          patientName: encrypt(patientName),
+          patientPhone: encrypt(patientPhone),
           pickupAddress,
           destinationAddress,
           appointmentDate: parsedDate,

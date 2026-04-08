@@ -31,6 +31,15 @@ interface TripDetail {
   specialInstructions: string;
   status: string;
   providerId?: string | null;
+  medicaidId?: string | null;
+  authorizationNumber?: string | null;
+  driverName?: string | null;
+  driverId?: string | null;
+  vehicleId?: string | null;
+  actualPickupTime?: string | null;
+  actualDropoffTime?: string | null;
+  actualMileage?: number | null;
+  memberSignatureUrl?: string | null;
   provider?: { id: string; name: string } | null;
   createdAt: string;
   statusHistory: {
@@ -236,6 +245,23 @@ export default function TripDetailPage() {
               )}
             </div>
           </div>
+
+          {/* Trip Documentation (compliance fields) */}
+          {(trip.medicaidId || trip.authorizationNumber || trip.driverName || trip.actualPickupTime || trip.actualMileage) && (
+            <div className="bg-card rounded-xl border border-border shadow-sm p-6">
+              <h2 className="text-sm font-semibold text-navy uppercase tracking-wider mb-4">Trip Documentation</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {trip.medicaidId && <InfoRow label="Medicaid ID" value={trip.medicaidId} />}
+                {trip.authorizationNumber && <InfoRow label="Authorization #" value={trip.authorizationNumber} />}
+                {trip.driverName && <InfoRow label="Driver" value={trip.driverName} />}
+                {trip.driverId && <InfoRow label="Driver ID" value={trip.driverId} />}
+                {trip.vehicleId && <InfoRow label="Vehicle ID" value={trip.vehicleId} />}
+                {trip.actualPickupTime && <InfoRow label="Actual Pickup" value={new Date(trip.actualPickupTime).toLocaleString()} />}
+                {trip.actualDropoffTime && <InfoRow label="Actual Dropoff" value={new Date(trip.actualDropoffTime).toLocaleString()} />}
+                {trip.actualMileage != null && <InfoRow label="Mileage" value={`${trip.actualMileage} mi`} />}
+              </div>
+            </div>
+          )}
 
           {/* Provider Assignment */}
           {canAssign && (

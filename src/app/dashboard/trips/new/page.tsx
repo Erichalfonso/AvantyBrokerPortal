@@ -13,6 +13,8 @@ export default function NewTripPage() {
   const [form, setForm] = useState({
     patientName: "",
     patientPhone: "",
+    medicaidId: "",
+    authorizationNumber: "",
     pickupAddress: "",
     destinationAddress: "",
     appointmentDate: "",
@@ -69,6 +71,24 @@ export default function NewTripPage() {
                 onChange={handleChange}
                 required
                 placeholder="(555) 123-4567"
+                className="w-full px-4 py-2 rounded-lg border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-navy mb-1">Medicaid ID</label>
+              <input
+                name="medicaidId"
+                value={form.medicaidId}
+                onChange={handleChange}
+                className="w-full px-4 py-2 rounded-lg border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-navy mb-1">Authorization #</label>
+              <input
+                name="authorizationNumber"
+                value={form.authorizationNumber}
+                onChange={handleChange}
                 className="w-full px-4 py-2 rounded-lg border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent"
               />
             </div>

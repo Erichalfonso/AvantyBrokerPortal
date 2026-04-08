@@ -39,18 +39,70 @@ enum MobilityType {
   @@map("mobility_type")
 }
 
+enum CredentialType {
+  BUSINESS_LICENSE    @map("business_license")
+  INSURANCE_COI       @map("insurance_coi")
+  VEHICLE_INSPECTION  @map("vehicle_inspection")
+  BACKGROUND_CHECK    @map("background_check")
+  DRUG_TEST           @map("drug_test")
+  CPR_CERTIFICATION   @map("cpr_certification")
+  HIPAA_TRAINING      @map("hipaa_training")
+  FWA_TRAINING        @map("fwa_training")
+  ADA_TRAINING        @map("ada_training")
+  DRIVERS_LICENSE     @map("drivers_license")
+  OIG_SCREENING       @map("oig_screening")
+  SAM_SCREENING       @map("sam_screening")
+  OTHER               @map("other")
+
+  @@map("credential_type")
+}
+
+enum CredentialStatus {
+  VALID     @map("valid")
+  EXPIRING  @map("expiring")
+  EXPIRED   @map("expired")
+  PENDING   @map("pending")
+  REJECTED  @map("rejected")
+
+  @@map("credential_status")
+}
+
+enum ComplaintStatus {
+  OPEN          @map("open")
+  INVESTIGATING @map("investigating")
+  RESOLVED      @map("resolved")
+  CLOSED        @map("closed")
+
+  @@map("complaint_status")
+}
+
+enum ComplaintCategory {
+  LATE_PICKUP       @map("late_pickup")
+  NO_SHOW_DRIVER    @map("no_show_driver")
+  VEHICLE_CONDITION @map("vehicle_condition")
+  DRIVER_BEHAVIOR   @map("driver_behavior")
+  BILLING           @map("billing")
+  ACCESSIBILITY     @map("accessibility")
+  SAFETY            @map("safety")
+  OTHER             @map("other")
+
+  @@map("complaint_category")
+}
+
 // ─── Models ──────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  role         UserRole @default(BROKER)
-  providerId   String?  @map("provider_id")
-  provider     Provider? @relation(fields: [providerId], references: [id])
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                  String    @id @default(cuid())
+  name                String
+  email               String    @unique
+  passwordHash        String    @map("password_hash")
+  role                UserRole  @default(BROKER)
+  providerId          String?   @map("provider_id")
+  provider            Provider? @relation(fields: [providerId], references: [id])
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   // Relations
   createdTrips  Trip[]              @relation("TripCreator")
@@ -62,6 +114,7 @@ model User {
 
 model Provider {
   id           String         @id @default(cuid())
+  code         String         @unique
   name         String
   contactName  String         @map("contact_name")
   phone        String
@@ -73,8 +126,10 @@ model Provider {
   updatedAt    DateTime       @updatedAt @map("updated_at")
 
   // Relations
-  users User[]
-  trips Trip[]
+  users       User[]
+  trips       Trip[]
+  credentials ProviderCredential[]
+  complaints  Complaint[]
 
   @@map("providers")
 }
@@ -98,9 +153,25 @@ model Trip {
   createdAt           DateTime     @default(now()) @map("created_at")
   updatedAt           DateTime     @updatedAt @map("updated_at")
 
+  // Trip documentation fields (required for compliance)
+  medicaidId          String?      @map("medicaid_id")
+  authorizationNumber String?      @map("authorization_number")
+  driverName          String?      @map("driver_name")
+  driverId            String?      @map("driver_id")
+  vehicleId           String?      @map("vehicle_id")
+  actualPickupTime    DateTime?    @map("actual_pickup_time")
+  actualDropoffTime   DateTime?    @map("actual_dropoff_time")
+  actualMileage       Float?       @map("actual_mileage")
+  memberSignatureUrl  String?      @map("member_signature_url")
+
+  // Standing order reference
+  standingOrderId     String?      @map("standing_order_id")
+  standingOrder       StandingOrder? @relation(fields: [standingOrderId], references: [id])
+
   // Relations
   statusHistory TripStatusHistory[]
   notes         Note[]
+  complaints    Complaint[]
 
   @@map("trips")
 }
@@ -140,4 +211,74 @@ model AuditLog {
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("audit_logs")
+}
+
+// ─── Provider Credentialing ─────────────────────────────
+
+model ProviderCredential {
+  id              String           @id @default(cuid())
+  providerId      String           @map("provider_id")
+  provider        Provider         @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  type            CredentialType
+  status          CredentialStatus @default(PENDING)
+  documentNumber  String?          @map("document_number")
+  issuedDate      DateTime?        @map("issued_date")
+  expirationDate  DateTime?        @map("expiration_date")
+  verifiedById    String?          @map("verified_by_id")
+  verifiedAt      DateTime?        @map("verified_at")
+  notes           String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@map("provider_credentials")
+}
+
+// ─── Complaint Tracking ─────────────────────────────────
+
+model Complaint {
+  id              String            @id @default(cuid())
+  complaintNumber String            @unique @map("complaint_number")
+  category        ComplaintCategory
+  status          ComplaintStatus   @default(OPEN)
+  description     String
+  resolution      String?
+  providerId      String?           @map("provider_id")
+  provider        Provider?         @relation(fields: [providerId], references: [id])
+  tripId          String?           @map("trip_id")
+  trip            Trip?             @relation(fields: [tripId], references: [id])
+  reportedBy      String            @map("reported_by")
+  resolvedById    String?           @map("resolved_by_id")
+  resolvedAt      DateTime?         @map("resolved_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@map("complaints")
+}
+
+// ─── Standing Orders (Recurring Trips) ──────────────────
+
+model StandingOrder {
+  id                  String       @id @default(cuid())
+  patientName         String       @map("patient_name")
+  patientPhone        String       @map("patient_phone")
+  medicaidId          String?      @map("medicaid_id")
+  pickupAddress       String       @map("pickup_address")
+  destinationAddress  String       @map("destination_address")
+  appointmentTime     String       @map("appointment_time")
+  mobilityType        MobilityType @map("mobility_type")
+  specialInstructions String       @default("") @map("special_instructions")
+  providerId          String?      @map("provider_id")
+  // Recurrence
+  daysOfWeek          Int[]        @map("days_of_week") // 0=Sun, 1=Mon, ... 6=Sat
+  startDate           DateTime     @map("start_date")
+  endDate             DateTime?    @map("end_date")
+  active              Boolean      @default(true)
+  createdById         String       @map("created_by_id")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  trips Trip[]
+
+  @@map("standing_orders")
 }

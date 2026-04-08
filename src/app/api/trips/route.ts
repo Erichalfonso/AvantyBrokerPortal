@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { encrypt, decryptPHI } from "@/lib/encryption";
 type TripStatus = string;
 
 export async function GET(request: NextRequest) {
@@ -26,8 +27,8 @@ export async function GET(request: NextRequest) {
   }
 
   if (search) {
+    // Note: patientName is encrypted and cannot be searched via DB query
     where.OR = [
-      { patientName: { contains: search, mode: "insensitive" } },
       { tripNumber: { contains: search, mode: "insensitive" } },
       { pickupAddress: { contains: search, mode: "insensitive" } },
     ];
@@ -50,8 +51,11 @@ export async function GET(request: NextRequest) {
     prisma.trip.count({ where }),
   ]);
 
+  // HIPAA: Decrypt PHI fields before returning
+  const decryptedTrips = trips.map((trip) => decryptPHI(trip));
+
   return NextResponse.json({
-    trips,
+    trips: decryptedTrips,
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   });
 }
@@ -76,14 +80,16 @@ export async function POST(request: NextRequest) {
   const trip = await prisma.trip.create({
     data: {
       tripNumber,
-      patientName: body.patientName,
-      patientPhone: body.patientPhone,
+      patientName: encrypt(body.patientName),
+      patientPhone: encrypt(body.patientPhone || ""),
       pickupAddress: body.pickupAddress,
       destinationAddress: body.destinationAddress,
       appointmentDate: new Date(body.appointmentDate),
       appointmentTime: body.appointmentTime,
       mobilityType: body.mobilityType as never,
       specialInstructions: body.specialInstructions || "",
+      medicaidId: body.medicaidId || null,
+      authorizationNumber: body.authorizationNumber || null,
       status: "pending" as never,
       createdById: session.user.id,
       statusHistory: {
@@ -104,5 +110,5 @@ export async function POST(request: NextRequest) {
 
   await logAudit("TRIP_CREATED", "Trip", trip.id, session.user.id, `Created trip ${tripNumber}`);
 
-  return NextResponse.json(trip, { status: 201 });
+  return NextResponse.json(decryptPHI(trip), { status: 201 });
 }

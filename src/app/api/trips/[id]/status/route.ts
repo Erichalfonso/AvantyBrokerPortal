@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { decryptPHI } from "@/lib/encryption";
+import { sendEmail, tripStatusChangedEmail } from "@/lib/email";
 
 export async function POST(
   request: NextRequest,
@@ -71,5 +73,14 @@ export async function POST(
 
   await logAudit("STATUS_CHANGED", "Trip", trip.id, session.user.id, `${trip.status} → ${status}`);
 
-  return NextResponse.json(updated);
+  // Notify the trip creator (broker) of status changes by providers
+  if (session.user.role === "provider" && trip.createdById) {
+    const creator = await prisma.user.findUnique({ where: { id: trip.createdById }, select: { name: true, email: true } });
+    if (creator) {
+      const email = tripStatusChangedEmail(creator.name, trip.tripNumber, trip.status, status);
+      sendEmail({ to: creator.email, ...email }).catch(() => {});
+    }
+  }
+
+  return NextResponse.json(decryptPHI(updated));
 }
