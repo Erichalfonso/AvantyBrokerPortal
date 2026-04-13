@@ -89,6 +89,26 @@ enum ComplaintCategory {
   @@map("complaint_category")
 }
 
+enum ReimbursementFormType {
+  MEDICAID_TRIP    @map("medicaid_trip")
+  PROVIDER_INVOICE @map("provider_invoice")
+  CMS_1500         @map("cms_1500")
+
+  @@map("reimbursement_form_type")
+}
+
+enum ReimbursementFormStatus {
+  DRAFT        @map("draft")
+  SUBMITTED    @map("submitted")
+  UNDER_REVIEW @map("under_review")
+  APPROVED     @map("approved")
+  DENIED       @map("denied")
+  PAID         @map("paid")
+  VOID         @map("void")
+
+  @@map("reimbursement_form_status")
+}
+
 // ─── Models ──────────────────────────────────────────────
 
 model User {
@@ -108,6 +128,8 @@ model User {
   createdTrips  Trip[]              @relation("TripCreator")
   statusChanges TripStatusHistory[]
   notes         Note[]
+  createdReimbursementForms  ReimbursementForm[] @relation("FormCreator")
+  reviewedReimbursementForms ReimbursementForm[] @relation("FormReviewer")
 
   @@map("users")
 }
@@ -126,10 +148,11 @@ model Provider {
   updatedAt    DateTime       @updatedAt @map("updated_at")
 
   // Relations
-  users       User[]
-  trips       Trip[]
-  credentials ProviderCredential[]
-  complaints  Complaint[]
+  users              User[]
+  trips              Trip[]
+  credentials        ProviderCredential[]
+  complaints         Complaint[]
+  reimbursementForms ReimbursementForm[]
 
   @@map("providers")
 }
@@ -169,9 +192,10 @@ model Trip {
   standingOrder       StandingOrder? @relation(fields: [standingOrderId], references: [id])
 
   // Relations
-  statusHistory TripStatusHistory[]
-  notes         Note[]
-  complaints    Complaint[]
+  statusHistory      TripStatusHistory[]
+  notes              Note[]
+  complaints         Complaint[]
+  reimbursementForms ReimbursementForm[]
 
   @@map("trips")
 }
@@ -281,4 +305,168 @@ model StandingOrder {
   trips Trip[]
 
   @@map("standing_orders")
+}
+
+// ─── Reimbursement Forms ────────────────────────────────
+
+model ReimbursementForm {
+  id         String                  @id @default(cuid())
+  formNumber String                  @unique @map("form_number")
+  formType   ReimbursementFormType   @map("form_type")
+  status     ReimbursementFormStatus @default(DRAFT)
+
+  // Linked entities
+  tripId     String?  @map("trip_id")
+  trip       Trip?    @relation(fields: [tripId], references: [id])
+  providerId String?  @map("provider_id")
+  provider   Provider? @relation(fields: [providerId], references: [id])
+  createdById  String   @map("created_by_id")
+  createdBy    User     @relation("FormCreator", fields: [createdById], references: [id])
+  reviewedById String?  @map("reviewed_by_id")
+  reviewedBy   User?    @relation("FormReviewer", fields: [reviewedById], references: [id])
+
+  // Workflow timestamps
+  submittedAt DateTime? @map("submitted_at")
+  reviewedAt  DateTime? @map("reviewed_at")
+  paidAt      DateTime? @map("paid_at")
+  reviewNotes String?   @map("review_notes")
+  totalAmount Float     @default(0) @map("total_amount")
+
+  // ── Medicaid Trip Reimbursement fields ──
+  patientName         String?  @map("patient_name")      // encrypted
+  patientDob          String?  @map("patient_dob")       // encrypted
+  medicaidId          String?  @map("medicaid_id")
+  authorizationNumber String?  @map("authorization_number")
+  healthPlanName      String?  @map("health_plan_name")
+  healthPlanId        String?  @map("health_plan_id")
+  pickupAddress       String?  @map("pickup_address")
+  destinationAddress  String?  @map("destination_address")
+  tripDate            DateTime? @map("trip_date")
+  pickupTime          String?  @map("pickup_time")
+  dropoffTime         String?  @map("dropoff_time")
+  mobilityType        MobilityType? @map("mobility_type")
+  mileage             Float?
+  mileageRate         Float?   @map("mileage_rate")
+  baseRate            Float?   @map("base_rate")
+  tolls               Float?
+  waitTime            Int?     @map("wait_time")         // minutes
+  waitTimeRate        Float?   @map("wait_time_rate")
+  driverName          String?  @map("driver_name")
+  driverId            String?  @map("driver_id")
+  vehicleId           String?  @map("vehicle_id")
+  vehicleType         String?  @map("vehicle_type")
+  memberSignatureUrl  String?  @map("member_signature_url")
+  driverSignatureUrl  String?  @map("driver_signature_url")
+  attendantName       String?  @map("attendant_name")
+  returnTrip          Boolean? @map("return_trip")
+  tripPurpose         String?  @map("trip_purpose")
+
+  // ── Provider Invoice fields ──
+  invoiceNumber       String?  @map("invoice_number")
+  invoiceDate         DateTime? @map("invoice_date")
+  billingPeriodStart  DateTime? @map("billing_period_start")
+  billingPeriodEnd    DateTime? @map("billing_period_end")
+  providerTaxId       String?  @map("provider_tax_id")
+  providerNpi         String?  @map("provider_npi")
+  remitToName         String?  @map("remit_to_name")
+  remitToAddress      String?  @map("remit_to_address")
+  paymentTerms        String?  @map("payment_terms")
+
+  // ── CMS-1500 fields (Boxes 1-33) ──
+  insuranceType         String?  @map("insurance_type")           // Box 1
+  insuredIdNumber       String?  @map("insured_id_number")        // Box 1a
+  patientSex            String?  @map("patient_sex")              // Box 3
+  insuredName           String?  @map("insured_name")             // Box 4 (encrypted)
+  patientAddress        String?  @map("patient_address")          // Box 5
+  patientCity           String?  @map("patient_city")
+  patientState          String?  @map("patient_state")
+  patientZip            String?  @map("patient_zip")
+  patientPhone          String?  @map("patient_phone")            // encrypted
+  patientRelToInsured   String?  @map("patient_rel_to_insured")   // Box 6
+  insuredAddress        String?  @map("insured_address")          // Box 7
+  insuredCity           String?  @map("insured_city")
+  insuredState          String?  @map("insured_state")
+  insuredZip            String?  @map("insured_zip")
+  patientConditionRelTo String?  @map("patient_condition_rel_to") // Box 10
+  insuredPolicyGroup    String?  @map("insured_policy_group")     // Box 11
+  insuredDob            String?  @map("insured_dob")              // Box 11a
+  insuredSex            String?  @map("insured_sex")              // Box 11a
+  insuredPlanName       String?  @map("insured_plan_name")        // Box 11c
+  patientSignatureOnFile Boolean? @map("patient_sig_on_file")     // Box 12
+  insuredSignatureOnFile Boolean? @map("insured_sig_on_file")     // Box 13
+  conditionDateOfOnset  DateTime? @map("condition_date_of_onset") // Box 14
+  referringProviderName String?  @map("referring_provider_name")  // Box 17
+  referringProviderNpi  String?  @map("referring_provider_npi")   // Box 17b
+  diagnosisCode1        String?  @map("diagnosis_code_1")         // Box 21
+  diagnosisCode2        String?  @map("diagnosis_code_2")
+  diagnosisCode3        String?  @map("diagnosis_code_3")
+  diagnosisCode4        String?  @map("diagnosis_code_4")
+  priorAuthNumber       String?  @map("prior_auth_number")        // Box 23
+  federalTaxId          String?  @map("federal_tax_id")           // Box 25
+  federalTaxIdType      String?  @map("federal_tax_id_type")      // SSN or EIN
+  patientAccountNumber  String?  @map("patient_account_number")   // Box 26
+  acceptAssignment      Boolean? @map("accept_assignment")        // Box 27
+  amountPaid            Float?   @map("amount_paid")              // Box 29
+  billingProviderName   String?  @map("billing_provider_name")    // Box 33
+  billingProviderAddress String? @map("billing_provider_address")
+  billingProviderNpi    String?  @map("billing_provider_npi")     // Box 33a
+  billingProviderTaxonomy String? @map("billing_provider_taxonomy") // Box 33b
+  facilityName          String?  @map("facility_name")            // Box 32
+  facilityAddress       String?  @map("facility_address")
+  facilityNpi           String?  @map("facility_npi")             // Box 32a
+
+  // Public submission fields (no login required)
+  submitterName      String?  @map("submitter_name")
+  submitterEmail     String?  @map("submitter_email")
+  submitterPhone     String?  @map("submitter_phone")
+  isPublicSubmission Boolean  @default(false) @map("is_public_submission")
+
+  // Relations
+  serviceLines CMS1500ServiceLine[]
+  invoiceLines ProviderInvoiceLine[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("reimbursement_forms")
+}
+
+model CMS1500ServiceLine {
+  id                 String   @id @default(cuid())
+  formId             String   @map("form_id")
+  form               ReimbursementForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  lineNumber         Int      @map("line_number")
+  dateOfServiceFrom  DateTime @map("date_of_service_from")
+  dateOfServiceTo    DateTime @map("date_of_service_to")
+  placeOfService     String   @map("place_of_service")
+  procedureCode      String   @map("procedure_code")
+  modifiers          String[] @default([])
+  diagnosisPointer   String   @map("diagnosis_pointer")
+  charges            Float
+  units              Float    @default(1)
+  renderingProviderNpi String? @map("rendering_provider_npi")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("cms1500_service_lines")
+}
+
+model ProviderInvoiceLine {
+  id                 String   @id @default(cuid())
+  formId             String   @map("form_id")
+  form               ReimbursementForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  lineNumber         Int      @map("line_number")
+  tripId             String?  @map("trip_id")
+  tripNumber         String?  @map("trip_number")
+  serviceDate        DateTime @map("service_date")
+  serviceDescription String   @map("service_description")
+  pickupAddress      String?  @map("pickup_address")
+  destinationAddress String?  @map("destination_address")
+  mileage            Float?
+  rate               Float
+  amount             Float
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("provider_invoice_lines")
 }
