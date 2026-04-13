@@ -9,6 +9,7 @@ import Link from "next/link";
 
 interface Provider {
   id: string;
+  code: string;
   name: string;
   contactName: string;
   phone: string;
@@ -90,6 +91,7 @@ export default function ProvidersPage() {
                   <Link href={`/dashboard/providers/${provider.id}`} className="text-lg font-semibold text-navy hover:text-teal transition-colors">
                     {provider.name}
                   </Link>
+                  <p className="text-xs font-mono text-teal font-medium">{provider.code}</p>
                   <p className="text-sm text-muted">{provider.contactName}</p>
                 </div>
                 <span

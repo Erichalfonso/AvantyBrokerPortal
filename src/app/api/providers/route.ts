@@ -31,8 +31,19 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
 
+  // Generate next provider code (PRV-001, PRV-002, etc.)
+  const lastProvider = await prisma.provider.findFirst({
+    orderBy: { code: "desc" },
+    select: { code: true },
+  });
+  const nextNum = lastProvider
+    ? parseInt(lastProvider.code.replace("PRV-", ""), 10) + 1
+    : 1;
+  const code = `PRV-${String(nextNum).padStart(3, "0")}`;
+
   const provider = await prisma.provider.create({
     data: {
+      code,
       name: body.name,
       contactName: body.contactName,
       phone: body.phone,

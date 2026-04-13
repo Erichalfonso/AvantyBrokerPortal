@@ -15,6 +15,7 @@ async function main() {
     update: {},
     create: {
       id: "p1",
+      code: "PRV-001",
       name: "SafeRide Transport",
       contactName: "David Johnson",
       phone: "(555) 123-4567",
@@ -30,6 +31,7 @@ async function main() {
     update: {},
     create: {
       id: "p2",
+      code: "PRV-002",
       name: "CareWheels LLC",
       contactName: "Sarah Mitchell",
       phone: "(555) 234-5678",
@@ -45,6 +47,7 @@ async function main() {
     update: {},
     create: {
       id: "p3",
+      code: "PRV-003",
       name: "MedMove Services",
       contactName: "Robert Williams",
       phone: "(555) 345-6789",

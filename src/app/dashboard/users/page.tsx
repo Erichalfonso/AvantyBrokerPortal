@@ -28,6 +28,8 @@ export default function UsersPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [createdCredentials, setCreatedCredentials] = useState<{ name: string; email: string; password: string; role: string } | null>(null);
+  const [resetCredentials, setResetCredentials] = useState<{ name: string; email: string; password: string } | null>(null);
+  const [resettingId, setResettingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -98,6 +100,19 @@ export default function UsersPage() {
     setSubmitting(false);
   };
 
+  const handleResetPassword = async (userId: string, userName: string, userEmail: string) => {
+    setResettingId(userId);
+    const res = await fetch(`/api/users/${userId}/reset-password`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setResetCredentials({ name: userName, email: userEmail, password: data.password });
+    }
+    setResettingId(null);
+  };
+
   const roleColors: Record<string, string> = {
     admin: "bg-purple-100 text-purple-800",
     broker: "bg-blue-100 text-blue-800",
@@ -140,6 +155,35 @@ export default function UsersPage() {
           <button
             onClick={() => {
               const text = `Login Credentials\nName: ${createdCredentials.name}\nEmail: ${createdCredentials.email}\nPassword: ${createdCredentials.password}\nRole: ${createdCredentials.role}`;
+              navigator.clipboard.writeText(text);
+            }}
+            className="mt-3 px-4 py-2 text-sm bg-navy hover:bg-navy-dark text-white font-medium rounded-lg transition-colors"
+          >
+            Copy Credentials
+          </button>
+        </div>
+      )}
+
+      {resetCredentials && (
+        <div className="mb-6 bg-amber-50 border border-amber-300/50 rounded-xl p-6">
+          <div className="flex items-start justify-between mb-3">
+            <h3 className="text-sm font-semibold text-amber-700 uppercase tracking-wider">Password Reset</h3>
+            <button
+              onClick={() => setResetCredentials(null)}
+              className="text-muted hover:text-navy text-sm"
+            >
+              Dismiss
+            </button>
+          </div>
+          <p className="text-sm text-navy mb-3">New credentials for this user:</p>
+          <div className="bg-white rounded-lg border border-border p-4 font-mono text-sm space-y-1">
+            <p><span className="text-muted">Name:</span> <span className="text-navy">{resetCredentials.name}</span></p>
+            <p><span className="text-muted">Email:</span> <span className="text-navy">{resetCredentials.email}</span></p>
+            <p><span className="text-muted">New Password:</span> <span className="text-navy">{resetCredentials.password}</span></p>
+          </div>
+          <button
+            onClick={() => {
+              const text = `Password Reset\nName: ${resetCredentials.name}\nEmail: ${resetCredentials.email}\nNew Password: ${resetCredentials.password}`;
               navigator.clipboard.writeText(text);
             }}
             className="mt-3 px-4 py-2 text-sm bg-navy hover:bg-navy-dark text-white font-medium rounded-lg transition-colors"
@@ -255,6 +299,7 @@ export default function UsersPage() {
                   <th className="text-left p-4 text-xs font-medium text-muted uppercase tracking-wider">Role</th>
                   <th className="text-left p-4 text-xs font-medium text-muted uppercase tracking-wider">Provider</th>
                   <th className="text-left p-4 text-xs font-medium text-muted uppercase tracking-wider">Created</th>
+                  <th className="text-left p-4 text-xs font-medium text-muted uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -269,6 +314,15 @@ export default function UsersPage() {
                     </td>
                     <td className="p-4 text-sm text-navy">{u.provider?.name || "—"}</td>
                     <td className="p-4 text-sm text-muted">{new Date(u.createdAt).toLocaleDateString()}</td>
+                    <td className="p-4">
+                      <button
+                        onClick={() => handleResetPassword(u.id, u.name, u.email)}
+                        disabled={resettingId === u.id}
+                        className="px-3 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {resettingId === u.id ? "Resetting..." : "Reset Password"}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
