@@ -24,9 +24,6 @@ interface ReimbursementForm {
   provider?: { id: string; name: string };
   createdBy?: { id: string; name: string };
   trip?: { id: string; tripNumber: string };
-  isPublicSubmission?: boolean;
-  submitterName?: string;
-  submitterEmail?: string;
 }
 
 export default function ReimbursementsPage() {
@@ -139,9 +136,6 @@ export default function ReimbursementsPage() {
                     </td>
                     <td className="p-4 text-sm text-navy">
                       {form.patientName || form.invoiceNumber || "—"}
-                      {form.isPublicSubmission && (
-                        <span className="ml-2 inline-block px-1.5 py-0.5 text-[10px] font-medium bg-orange-100 text-orange-700 rounded">Public</span>
-                      )}
                     </td>
                     <td className="p-4 text-sm text-navy">{form.provider?.name || "—"}</td>
                     <td className="p-4 text-sm font-medium text-navy">
