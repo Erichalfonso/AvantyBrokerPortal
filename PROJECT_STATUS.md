@@ -1,111 +1,114 @@
-# Avanty Care Project Status — April 13, 2026
+# Avanty Care Project Status — April 14, 2026
 
 ## Overview
 Two separate codebases:
 - **Broker Portal** (Next.js) — `portal.avantycare.com` — repo: `github.com/Erichalfonso/AvantyBrokerPortal`
 - **Main Site** (Laravel 10) — `avantycare.com` — repo: `github.com/AvantyCare-Project/AvantyCare-Web`, cloned at `C:\Users\erich\AvantyCare-Web`
 
----
-
-## What Was Built Today
-
-### 1. Reimbursement Forms — Broker Portal (DEPLOYED via Amplify)
-Three fillable forms (Medicaid Trip, Provider Invoice, CMS-1500) with:
-- **Dashboard pages** (behind login): `/dashboard/reimbursements/*`
-- **Public pages** (no login): `/forms/*` — these exist but may be removed since forms are moving to the main site
-- **API endpoints**: `/api/reimbursements/*` and `/api/public/reimbursements/*`
-- **Database**: `ReimbursementForm`, `CMS1500ServiceLine`, `ProviderInvoiceLine` models (Prisma/PostgreSQL)
-- **Status workflow**: Draft → Submitted → Under Review → Approved/Denied → Paid
-- **Dashboard integration**: Quick-access cards on main dashboard, sidebar nav link
-- **Commit**: `be6eef1` + `d6a61d2` on `main`, deployed via AWS Amplify
-
-### 2. Reimbursement Forms — Main Site (COMMITTED, NOT DEPLOYED)
-Same three forms rebuilt natively in Laravel, matching the existing site design:
-- **Portal landing page**: `avantycare.com/portal` with 3 form cards
-- **Form pages**: `/portal/medicaid-trip`, `/portal/provider-invoice`, `/portal/cms-1500`
-- **"Portal" dropdown** added to header nav (desktop + mobile) with submenu links
-- **"Reimbursement Forms" button** in homepage hero section, links to `/portal`
-- **Controller**: `app/Http/Controllers/frontend/PortalController.php`
-- **Migration**: `2026_04_13_170000_create_reimbursement_forms_table.php` (3 tables)
-- **Models**: `ReimbursementForm`, `ReimbursementInvoiceLine`, `ReimbursementServiceLine`
-- **Views**: `resources/views/frontend/portal/` (4 Blade templates)
-- **Routes**: `routes/web.php` — `/portal/*` prefix group
-- **Commit**: `13812ef` on `dev` branch — **NOT pushed yet** because deploy is broken
+Both auto-deploy on push (Amplify for broker portal, GitHub Actions → EC2 for main site).
 
 ---
 
-## Blocking Issue: Main Site CI/CD Deploy Failure
+## What's Live
 
-**Problem**: GitHub Actions workflow (`deploy.yml`) SSHes into EC2 (`ubuntu@52.90.163.106`) and runs `deploy.sh`, which does `git fetch origin`. This fails with "Repository not found" — the EC2 server's SSH/git credentials have lost access to the GitHub repo.
+### Main Site — `avantycare.com/portal` (Deployed ✅)
+Public-facing online services hub organized by user type:
 
-**Last successful dev deploy**: June 30, 2025 (10+ months ago)
+**For Members & Patients**
+- Request a Trip (existing modal)
+- Check Ride Prices (existing form)
+- Mileage Reimbursement *(Coming Soon placeholder)*
+- File a Complaint *(Coming Soon placeholder)*
 
-**To fix**:
-1. SSH into EC2 at `52.90.163.106` (need the `avatycare_Keypair` .pem file — not on this machine)
-2. Check `cd ~/AvantyCare-Web && git remote -v` to see the remote URL
-3. Either:
-   - Add a new deploy key to the GitHub repo (`Settings > Deploy Keys`) using the EC2's SSH public key
-   - Or update the remote URL to use a personal access token: `git remote set-url origin https://<TOKEN>@github.com/AvantyCare-Project/AvantyCare-Web.git`
-4. Test by running `git fetch origin` on the EC2
-5. Once fixed, push `dev` branch and CI/CD will auto-deploy
+**For Transportation Providers**
+- Become a Partner (existing modal)
+- Submit Invoice (`/portal/provider-invoice`)
+- Medicaid Trip Reimbursement (`/portal/medicaid-trip`)
+- CMS-1500 Claim Form (`/portal/cms-1500`)
 
-**Alternative**: Connect to EC2 via AWS Console (Session Manager or EC2 Instance Connect) if the .pem key is unavailable.
+**Account Access**
+- Broker Portal Login → `portal.avantycare.com`
 
----
+**Nav**: "Portal" dropdown in desktop + mobile nav with links to all services.
 
-## What's Left To Do
-
-### Immediate
-- [ ] Fix EC2 deploy key / SSH access for main site
-- [ ] Push `dev` branch of AvantyCare-Web to trigger deploy
-- [ ] Verify forms work on avantycare.com/portal after deploy
-- [ ] Run `php artisan migrate` on EC2 (deploy.sh does this automatically)
-
-### Cleanup (Later)
-- [ ] Decide whether to remove public forms from broker portal (`/forms/*`) since they now live on main site
-- [ ] Decide whether to keep the "Reimbursement Forms" cards on broker portal dashboard
-
-### MVP Gaps Still Remaining (from audit)
-- [ ] Provider availability status (on-duty/off-duty)
-- [ ] Trip file attachments / document uploads
-- [ ] Self-service "forgot password" flow
-- [ ] MFA / 2FA
-- [ ] Pagination on providers, users, audit logs
-- [ ] Service area enforcement in trip assignment API
-- [ ] Credential expiry scheduled alerts
-- [ ] SMS notifications
+### Broker Portal — `portal.avantycare.com` (Deployed ✅)
+Internal dashboard for managing reimbursement form submissions + existing features:
+- `/dashboard/reimbursements/*` — manage forms with status workflow (Draft → Submitted → Under Review → Approved/Denied → Paid)
+- Dashboard quick-access cards for each form type
+- Sidebar nav "Reimbursements" link
+- API endpoints at `/api/reimbursements/*` (authenticated)
+- Public forms at `/forms/*` were **removed** — forms now live on main site
 
 ---
 
-## CI/CD Setup
+## CI/CD — Fully Working
 
-| Project | Hosting | CI/CD | Trigger |
-|---------|---------|-------|---------|
-| Broker Portal | AWS Amplify | Amplify auto-build | Push to `main` on `Erichalfonso/AvantyBrokerPortal` |
-| Main Site (dev) | EC2 (`52.90.163.106`) | GitHub Actions → SSH → `deploy.sh` | Push to `dev` on `AvantyCare-Project/AvantyCare-Web` |
-| Main Site (prod) | EC2 | GitHub Actions → `deploy_prod.yml` | Push to `main` on `AvantyCare-Project/AvantyCare-Web` |
+Fixed on 2026-04-14: EC2 server's git credentials were updated to use a Personal Access Token. Both deploy directories (`~/AvantyCare-Web` for dev, `~/AvantyCare-Prod` for prod) now authenticate successfully.
+
+| Project | Hosting | Trigger |
+|---------|---------|---------|
+| Broker Portal | AWS Amplify | Push to `main` on `Erichalfonso/AvantyBrokerPortal` |
+| Main Site (dev env) | EC2 `~/AvantyCare-Web` | Push to `dev` on `AvantyCare-Project/AvantyCare-Web` |
+| Main Site (prod) | EC2 `~/AvantyCare-Prod` | Push to `main` on `AvantyCare-Project/AvantyCare-Web` |
+
+**⚠️ Security TODO**: The GitHub PAT used to fix the EC2 git credentials was exposed in chat. It should be revoked at https://github.com/settings/tokens and replaced. The new token needs to be set on both `~/AvantyCare-Web` and `~/AvantyCare-Prod` on the EC2 server.
+
+---
+
+## What's Left (from COMPLIANCE_AND_FEATURES.md)
+
+### Immediate placeholders to fill in
+- **Mileage Reimbursement** (Phase 2.3) — member self-drive reimbursement form
+- **File a Complaint** — public complaint submission
+
+### MVP Gaps
+- Provider availability status (on-duty/off-duty)
+- Trip file attachments / document uploads
+- Self-service "forgot password" flow
+- MFA / 2FA
+- Pagination on providers, users, audit logs
+- Service area enforcement in trip assignment API
+- Credential expiry scheduled alerts
+- SMS notifications
+
+### Competitive features
+- GPS tracking on trips
+- Electronic trip verification (geo-tagged member e-signatures)
+- Trip log PDF export
+- Member self-service portal (mobile app)
+- Claims/billing automation
+- API integrations (TripMaster, RoutingBox)
+
+See `COMPLIANCE_AND_FEATURES.md` for full roadmap and legal compliance details.
+
+---
+
+## Architecture Decision
+
+**Public-facing forms live on the main site (Laravel), NOT the broker portal.**
+Reasoning: Competitors like Alivi and Motive Care serve forms from their main website. Having forms on a separate subdomain feels disjointed and untrustworthy to providers. The broker portal is for internal dashboard/admin use only.
+
+Portal is organized by user type (Members / Providers / Account Access) rather than by form type — this makes it scalable as we add more services (mileage reimbursement, complaints, member self-service, etc.).
 
 ---
 
 ## Key Files Reference
 
 ### Broker Portal (Next.js)
-- `prisma/schema.prisma` — all database models
-- `src/app/api/reimbursements/` — authenticated form API
-- `src/app/api/public/reimbursements/` — public form API
-- `src/app/dashboard/reimbursements/` — dashboard form pages
-- `src/app/forms/` — public form pages (may remove)
-- `src/app/dashboard/page.tsx` — main dashboard with quick-access cards
+- `prisma/schema.prisma` — database models
+- `src/app/api/reimbursements/` — authenticated reimbursement form API
+- `src/app/dashboard/reimbursements/` — dashboard form management pages
+- `src/app/dashboard/page.tsx` — main dashboard
 - `src/components/sidebar.tsx` — sidebar navigation
 - `amplify.yml` — Amplify build config
 
 ### Main Site (Laravel)
 - `routes/web.php` — all routes including `/portal/*`
-- `app/Http/Controllers/frontend/PortalController.php` — form controller
-- `app/Models/ReimbursementForm.php` — main form model
-- `resources/views/frontend/portal/` — Blade templates for forms
+- `app/Http/Controllers/frontend/PortalController.php` — form controller with validation
+- `app/Models/ReimbursementForm.php` + InvoiceLine/ServiceLine models
+- `resources/views/frontend/portal/` — Blade templates (index, medicaid-trip, provider-invoice, cms-1500)
 - `resources/views/frontend/include/header.blade.php` — nav with Portal dropdown
-- `resources/views/frontend/home.blade.php` — homepage with hero button
+- `resources/views/frontend/home.blade.php` — homepage with "Reimbursement Forms" hero button
 - `database/migrations/2026_04_13_170000_create_reimbursement_forms_table.php`
-- `.github/workflows/deploy.yml` — CI/CD for dev
-- `deploy.sh` — server-side deploy script
+- `.github/workflows/deploy.yml` + `deploy_prod.yml` — CI/CD
+- `deploy.sh` + `deploy_prod.sh` — server-side deploy scripts
