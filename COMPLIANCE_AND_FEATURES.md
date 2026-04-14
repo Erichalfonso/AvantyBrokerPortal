@@ -1,31 +1,73 @@
 # Avanty Broker Portal — Compliance & Feature Status
 
-> **Last updated:** 2026-04-08
+> **Last updated:** 2026-04-14
 > **Purpose:** Living document tracking what's built, what's legally required, and what's needed for MVP.
-> **Production URL:** https://portal.avantycare.com
+> **Production URLs:**
+> - Broker Portal: https://portal.avantycare.com (internal dashboard)
+> - Main Site / Public Portal: https://avantycare.com/portal (public forms)
 
 ---
 
 ## Table of Contents
 
-1. [Current Build Status](#current-build-status)
-2. [Legal & Regulatory Requirements](#legal--regulatory-requirements)
-3. [Competitor Feature Comparison](#competitor-feature-comparison)
-4. [MVP Roadmap](#mvp-roadmap)
-5. [Detailed Feature Inventory](#detailed-feature-inventory)
+1. [Changelog](#changelog)
+2. [Current Build Status](#current-build-status)
+3. [Legal & Regulatory Requirements](#legal--regulatory-requirements)
+4. [Competitor Feature Comparison](#competitor-feature-comparison)
+5. [MVP Roadmap](#mvp-roadmap)
+6. [Detailed Feature Inventory](#detailed-feature-inventory)
+
+---
+
+## Changelog
+
+### 2026-04-14
+- **Public Services Portal** launched on avantycare.com/portal (Laravel, native on main site)
+- Hub page organized by user type: Members & Patients / Transportation Providers / Account Access
+- "Portal" dropdown in main site nav (desktop + mobile) — links to all services
+- Broker Portal Login link added for existing account holders
+- CI/CD fully restored — EC2 git credentials updated, both dev and prod auto-deploy on push
+- Architectural decision: public-facing forms live on the main Laravel site, not the subdomain
+
+### 2026-04-13
+- **Reimbursement Forms** added to broker portal dashboard
+- Three form types: Medicaid Trip Reimbursement, Provider Invoice, CMS-1500 / HCFA Claim
+- Full status workflow (Draft → Submitted → Under Review → Approved/Denied → Paid)
+- Auto-populate from existing completed trips
+- Dashboard quick-access cards, sidebar nav link, role-based access
+- PHI encryption on patient fields, audit logging on all actions
+
+### 2026-04-08
+- Provider Credentialing Module (13 credential types, status tracking)
+- Trip Documentation fields (Medicaid ID, driver/vehicle ID, actual times, mileage, signatures)
+- Complaint Tracking (8 categories, full workflow)
+- Standing Orders (recurring trip templates with day-of-week scheduling)
+- Email Notifications (trip assignment, status change)
+- Reporting Dashboard (provider performance, trip log export, complaint summary)
 
 ---
 
 ## Current Build Status
 
-### Tech Stack
+### Architecture
+Two separate codebases with distinct purposes:
+
+**Broker Portal** (internal dashboard, behind login)
 - **Frontend:** Next.js 16 / React 19 / TypeScript / Tailwind CSS
 - **Backend:** Next.js API Routes
 - **Database:** PostgreSQL (AWS RDS)
 - **ORM:** Prisma 7
 - **Auth:** NextAuth v5 (JWT, credentials provider)
-- **Hosting:** AWS Amplify
+- **Hosting:** AWS Amplify (auto-deploy on push to main)
 - **PHI Encryption:** AES-256-GCM (via `src/lib/encryption.ts`)
+- **Repo:** github.com/Erichalfonso/AvantyBrokerPortal
+
+**Main Site / Public Portal** (marketing site + public forms)
+- **Framework:** Laravel 10 / PHP 8.1
+- **Database:** MySQL/PostgreSQL on EC2
+- **Hosting:** AWS EC2 (auto-deploy via GitHub Actions + SSH → deploy.sh)
+- **CI/CD:** `dev` branch → `~/AvantyCare-Web`, `main` branch → `~/AvantyCare-Prod`
+- **Repo:** github.com/AvantyCare-Project/AvantyCare-Web
 
 ### What's Built and Working
 
@@ -107,6 +149,19 @@
 | | Complaint summary report (by category, provider, resolution time) | Done |
 | | Date range filtering on all reports | Done |
 | | Reports dashboard page | Done |
+| **Reimbursement Forms (Broker Portal)** | Medicaid Trip Reimbursement form | Done |
+| | Provider Invoice form with line items | Done |
+| | CMS-1500 / HCFA Claim form (all Box 1-33 fields) | Done |
+| | Form status workflow (Draft → Submitted → Under Review → Approved/Denied → Paid) | Done |
+| | Auto-populate from completed trips | Done |
+| | Dashboard quick-access cards and list page | Done |
+| | Role-based access (brokers/admins for Medicaid+CMS, providers for invoices) | Done |
+| **Public Portal (Main Site)** | `/portal` hub page organized by user type | Done |
+| | For Members section: Request Trip, Check Prices, Mileage Reimbursement (placeholder), File Complaint (placeholder) | Partial |
+| | For Providers section: Become Partner, Submit Invoice, Medicaid Trip, CMS-1500 | Done |
+| | Broker Portal Login link | Done |
+| | "Portal" dropdown in main nav (desktop + mobile) | Done |
+| | Public reimbursement submissions save to Laravel DB | Done |
 
 ---
 
@@ -181,9 +236,9 @@ Health plans will not contract with you without these:
 | GPS tracking | Yes | Yes | Yes | No |
 | E-trip verification | Yes | Yes | Yes | No |
 | Provider credentialing | Yes | Yes | CAQH-based | **Yes** |
-| Member portal/app | Yes (MyModivcare) | Yes (MTM Link) | Yes (AliviRide) | No |
+| Member portal/app | Yes (MyModivcare) | Yes (MTM Link) | Yes (AliviRide) | Partial (public portal, no app) |
 | Reporting dashboards | Advanced | Advanced | Yes | Basic |
-| Claims/billing | Yes | Yes | Yes | No |
+| Claims/billing | Yes | Yes | Yes | **Partial** (reimbursement forms + invoicing) |
 | Notifications | Yes | Yes | Yes | No |
 | FWA monitoring | Yes | AI-powered | Yes | No |
 | Mileage reimbursement | Yes | Yes (digital GMR) | Yes | No |
@@ -303,6 +358,22 @@ Health plans will not contract with you without these:
   - Auto-assign to preferred provider
   - Activate/deactivate orders
   - PHI encrypted on standing order creation
+
+- [x] **3.7 Reimbursement Forms — Broker Portal** (completed 2026-04-13)
+  - Medicaid Trip Reimbursement, Provider Invoice, CMS-1500 / HCFA Claim
+  - Full status workflow (Draft → Submitted → Under Review → Approved/Denied → Paid)
+  - Auto-calculated totals, line-item support (invoice + CMS service lines)
+  - Auto-populate from existing completed trips
+  - Role-based access and PHI encryption on patient fields
+
+- [x] **3.8 Public Services Portal — Main Site** (completed 2026-04-14)
+  - `/portal` hub page on avantycare.com organized by user type
+  - Members section (Request Trip, Check Prices, Mileage/Complaint placeholders)
+  - Providers section (Become Partner, Submit Invoice, Medicaid Trip, CMS-1500)
+  - Broker Portal Login link for existing users
+  - Laravel-native forms with validation and DB storage
+  - "Portal" dropdown in main site navigation
+  - CI/CD fully operational (GitHub Actions → EC2 auto-deploy)
 
 - [ ] **3.5 Advanced Analytics**
   - Cost per trip analysis
