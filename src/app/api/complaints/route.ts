@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { sendEmail, complaintFiledEmail } from "@/lib/email";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -80,6 +81,22 @@ export async function POST(request: NextRequest) {
     session.user.id,
     `Created complaint ${complaintNumber}: ${body.category}`
   );
+
+  // Notify admins so complaints don't sit unseen
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN" },
+    select: { name: true, email: true },
+  });
+  for (const admin of admins) {
+    const email = complaintFiledEmail(
+      admin.name,
+      complaint.complaintNumber,
+      complaint.category,
+      complaint.description,
+      complaint.provider?.name,
+    );
+    sendEmail({ to: admin.email, ...email }).catch(() => {});
+  }
 
   return NextResponse.json(complaint, { status: 201 });
 }

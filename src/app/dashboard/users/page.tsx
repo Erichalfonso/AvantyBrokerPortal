@@ -28,7 +28,7 @@ export default function UsersPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [createdCredentials, setCreatedCredentials] = useState<{ name: string; email: string; password: string; role: string } | null>(null);
-  const [resetCredentials, setResetCredentials] = useState<{ name: string; email: string; password: string } | null>(null);
+  const [resetResult, setResetResult] = useState<{ name: string; email: string; emailed: boolean } | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -101,6 +101,7 @@ export default function UsersPage() {
   };
 
   const handleResetPassword = async (userId: string, userName: string, userEmail: string) => {
+    if (!confirm(`Reset password for ${userName}? A temporary password will be emailed to ${userEmail}.`)) return;
     setResettingId(userId);
     const res = await fetch(`/api/users/${userId}/reset-password`, {
       method: "POST",
@@ -108,7 +109,7 @@ export default function UsersPage() {
     });
     if (res.ok) {
       const data = await res.json();
-      setResetCredentials({ name: userName, email: userEmail, password: data.password });
+      setResetResult({ name: userName, email: userEmail, emailed: !!data.emailed });
     }
     setResettingId(null);
   };
@@ -164,32 +165,26 @@ export default function UsersPage() {
         </div>
       )}
 
-      {resetCredentials && (
+      {resetResult && (
         <div className="mb-6 bg-amber-50 border border-amber-300/50 rounded-xl p-6">
           <div className="flex items-start justify-between mb-3">
             <h3 className="text-sm font-semibold text-amber-700 uppercase tracking-wider">Password Reset</h3>
             <button
-              onClick={() => setResetCredentials(null)}
+              onClick={() => setResetResult(null)}
               className="text-muted hover:text-navy text-sm"
             >
               Dismiss
             </button>
           </div>
-          <p className="text-sm text-navy mb-3">New credentials for this user:</p>
-          <div className="bg-white rounded-lg border border-border p-4 font-mono text-sm space-y-1">
-            <p><span className="text-muted">Name:</span> <span className="text-navy">{resetCredentials.name}</span></p>
-            <p><span className="text-muted">Email:</span> <span className="text-navy">{resetCredentials.email}</span></p>
-            <p><span className="text-muted">New Password:</span> <span className="text-navy">{resetCredentials.password}</span></p>
-          </div>
-          <button
-            onClick={() => {
-              const text = `Password Reset\nName: ${resetCredentials.name}\nEmail: ${resetCredentials.email}\nNew Password: ${resetCredentials.password}`;
-              navigator.clipboard.writeText(text);
-            }}
-            className="mt-3 px-4 py-2 text-sm bg-navy hover:bg-navy-dark text-white font-medium rounded-lg transition-colors"
-          >
-            Copy Credentials
-          </button>
+          {resetResult.emailed ? (
+            <p className="text-sm text-navy">
+              A temporary password has been emailed to <strong>{resetResult.email}</strong>. {resetResult.name} can use it to sign in and then change their password.
+            </p>
+          ) : (
+            <p className="text-sm text-danger">
+              Password was reset for <strong>{resetResult.email}</strong>, but email delivery failed. Check SMTP configuration and have the user contact support.
+            </p>
+          )}
         </div>
       )}
 

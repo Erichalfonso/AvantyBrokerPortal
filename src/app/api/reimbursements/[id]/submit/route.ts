@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { sendEmail, reimbursementSubmittedEmail } from "@/lib/email";
 
 export async function POST(
   request: NextRequest,
@@ -71,6 +72,23 @@ export async function POST(
     session.user.id,
     `Submitted form ${form.formNumber}`
   );
+
+  // Notify admins (and brokers, who are the typical reviewers) that a form is awaiting review
+  const reviewers = await prisma.user.findMany({
+    where: { role: { in: ["ADMIN", "BROKER"] } },
+    select: { name: true, email: true },
+  });
+  const submitterName = updated.createdBy?.name || "a user";
+  for (const reviewer of reviewers) {
+    const email = reimbursementSubmittedEmail(
+      reviewer.name,
+      updated.formNumber,
+      updated.formType,
+      submitterName,
+      updated.totalAmount,
+    );
+    sendEmail({ to: reviewer.email, ...email }).catch(() => {});
+  }
 
   return NextResponse.json(updated);
 }

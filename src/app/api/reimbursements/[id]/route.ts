@@ -3,6 +3,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { encrypt, decrypt } from "@/lib/encryption";
+import { sendEmail, reimbursementStatusChangedEmail } from "@/lib/email";
+
+const NOTIFY_STATUSES = new Set(["UNDER_REVIEW", "APPROVED", "DENIED", "PAID", "VOID"]);
 
 const PHI_FIELDS = ["patientName", "patientDob", "patientPhone", "insuredName"];
 
@@ -176,12 +179,30 @@ export async function PUT(
     include: {
       trip: { select: { id: true, tripNumber: true } },
       provider: { select: { id: true, name: true } },
-      createdBy: { select: { id: true, name: true } },
+      createdBy: { select: { id: true, name: true, email: true } },
       reviewedBy: { select: { id: true, name: true } },
       serviceLines: { orderBy: { lineNumber: "asc" } },
       invoiceLines: { orderBy: { lineNumber: "asc" } },
     },
   });
+
+  // Notify the form creator when a reviewer changes status to a meaningful state
+  if (
+    body.status &&
+    typeof updateData.status === "string" &&
+    NOTIFY_STATUSES.has(updateData.status) &&
+    updated.createdBy &&
+    updated.createdById !== session.user.id
+  ) {
+    const email = reimbursementStatusChangedEmail(
+      updated.createdBy.name,
+      updated.formNumber,
+      form.status,
+      updateData.status,
+      typeof updateData.reviewNotes === "string" ? updateData.reviewNotes : null,
+    );
+    sendEmail({ to: updated.createdBy.email, ...email }).catch(() => {});
+  }
 
   return NextResponse.json(decryptFormPHI(updated as unknown as Record<string, unknown>));
 }
