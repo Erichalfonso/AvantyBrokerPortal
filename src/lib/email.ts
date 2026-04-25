@@ -101,6 +101,27 @@ export function tripStatusChangedEmail(recipientName: string, tripNumber: string
   };
 }
 
+export function forgotPasswordEmail(name: string, resetUrl: string) {
+  return {
+    subject: "Reset your Avanty Care password",
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px;">
+        <h2 style="color: #1a365d;">Password Reset Request</h2>
+        <p>Hello ${name},</p>
+        <p>We received a request to reset the password for your Avanty Care account. Click the button below to choose a new password. This link expires in 1 hour.</p>
+        <a href="${resetUrl}"
+           style="display: inline-block; padding: 12px 24px; background-color: #319795; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 16px 0;">
+          Reset Password
+        </a>
+        <p style="color: #718096; font-size: 13px;">If the button doesn't work, paste this link into your browser:</p>
+        <p style="color: #319795; font-size: 13px; word-break: break-all;">${resetUrl}</p>
+        <p style="color: #718096; font-size: 13px; margin-top: 24px;">If you did not request this reset, you can safely ignore this email — your password will not change.</p>
+        <p style="color: #a0aec0; font-size: 12px; margin-top: 24px;">Avanty Care Transportation Portal</p>
+      </div>
+    `,
+  };
+}
+
 export function passwordResetEmail(name: string, tempPassword: string) {
   const loginUrl = `${process.env.NEXTAUTH_URL || "https://portal.avantycare.com"}/`;
   return {

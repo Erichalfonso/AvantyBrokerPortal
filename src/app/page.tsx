@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 
@@ -99,9 +100,14 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-navy mb-1">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-navy">
+                Password
+              </label>
+              <Link href="/forgot-password" className="text-sm text-teal hover:text-teal-dark font-medium">
+                Forgot password?
+              </Link>
+            </div>
             <input
               id="password"
               type="password"
