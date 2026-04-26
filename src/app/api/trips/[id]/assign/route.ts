@@ -24,7 +24,6 @@ export async function POST(
 
   if (!trip) return NextResponse.json({ error: "Trip not found" }, { status: 404 });
 
-  // Allow assignment from pending or rejected
   if (!["pending", "rejected"].includes(trip.status)) {
     return NextResponse.json(
       { error: "Trip can only be assigned when pending or rejected" },
@@ -38,6 +37,19 @@ export async function POST(
 
   if (!provider || !provider.active) {
     return NextResponse.json({ error: "Provider not found or inactive" }, { status: 400 });
+  }
+
+  const tripMobility = trip.mobilityType.toString().toLowerCase();
+  const supportsMobility = provider.vehicleTypes.some(
+    (v) => v.toString().toLowerCase() === tripMobility
+  );
+  if (!supportsMobility) {
+    return NextResponse.json(
+      {
+        error: `${provider.name} cannot service ${tripMobility} trips. Choose a provider whose vehicle types include ${tripMobility}.`,
+      },
+      { status: 400 }
+    );
   }
 
   const updated = await prisma.trip.update({
@@ -64,7 +76,6 @@ export async function POST(
 
   await logAudit("PROVIDER_ASSIGNED", "Trip", trip.id, session.user.id, `Assigned to ${provider.name}`);
 
-  // Send email notification to provider
   const email = tripAssignedEmail(
     provider.name,
     trip.tripNumber,

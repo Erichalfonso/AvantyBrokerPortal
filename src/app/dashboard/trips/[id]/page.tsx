@@ -5,6 +5,7 @@ import { useAuth } from "@/context/auth-context";
 import { useTrips } from "@/context/trip-context";
 import { StatusBadge } from "@/components/status-badge";
 import { RejectModal } from "@/components/reject-modal";
+import { CompleteTripModal, type CompleteTripDocumentation } from "@/components/complete-trip-modal";
 import { MOBILITY_LABELS, TripStatus, TRIP_STATUS_LABELS, MobilityType } from "@/types";
 import { mockProviders } from "@/lib/mock-data";
 import Link from "next/link";
@@ -68,6 +69,8 @@ export default function TripDetailPage() {
   const [noteText, setNoteText] = useState("");
   const [addingNote, setAddingNote] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [statusError, setStatusError] = useState("");
 
   const { getTrip: getTripFromCtx } = useTrips();
 
@@ -128,8 +131,28 @@ export default function TripDetailPage() {
   };
 
   const handleStatusChange = async (status: TripStatus, note?: string) => {
+    setStatusError("");
+    if (status === "completed" && trip.status === "passenger_picked_up") {
+      setShowCompleteModal(true);
+      return;
+    }
     const success = await updateTripStatus(trip.tripNumber, status, note);
     if (success) await fetchTrip();
+  };
+
+  const handleCompleteConfirm = async (documentation: CompleteTripDocumentation) => {
+    const res = await fetch(`/api/trips/${trip.tripNumber}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ status: "completed", documentation }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to complete trip.");
+    }
+    setShowCompleteModal(false);
+    await fetchTrip();
   };
 
   const handleAssign = async () => {
@@ -382,6 +405,24 @@ export default function TripDetailPage() {
           }}
           onCancel={() => setShowRejectModal(false)}
         />
+      )}
+
+      {/* Complete Trip Modal */}
+      {showCompleteModal && (
+        <CompleteTripModal
+          tripNumber={trip.tripNumber}
+          existingDriverName={trip.driverName}
+          existingDriverId={trip.driverId}
+          existingVehicleId={trip.vehicleId}
+          onConfirm={handleCompleteConfirm}
+          onCancel={() => setShowCompleteModal(false)}
+        />
+      )}
+
+      {statusError && (
+        <div className="fixed bottom-4 right-4 max-w-sm p-4 bg-red-50 border border-danger/30 rounded-xl shadow-lg">
+          <p className="text-sm text-danger">{statusError}</p>
+        </div>
       )}
     </div>
   );

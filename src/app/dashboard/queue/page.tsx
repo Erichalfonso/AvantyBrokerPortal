@@ -31,6 +31,7 @@ export default function QueuePage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState("");
 
   const fetchQueue = useCallback(async () => {
     try {
@@ -59,6 +60,7 @@ export default function QueuePage() {
 
   const handleAssign = async (tripId: string, providerId: string) => {
     setAssigning(tripId);
+    setAssignError("");
     const res = await fetch((`/api/trips/${tripId}/assign`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -67,6 +69,9 @@ export default function QueuePage() {
     });
     if (res.ok) {
       await fetchQueue();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setAssignError(data.error || "Failed to assign provider.");
     }
     setAssigning(null);
   };
@@ -88,6 +93,13 @@ export default function QueuePage() {
           {trips.length} trip{trips.length !== 1 ? "s" : ""} waiting for provider assignment
         </p>
       </div>
+
+      {assignError && (
+        <div className="mb-6 p-4 bg-red-50 border border-danger/30 rounded-xl flex items-start justify-between">
+          <p className="text-sm text-danger">{assignError}</p>
+          <button onClick={() => setAssignError("")} className="text-muted hover:text-navy text-sm ml-3">Dismiss</button>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-16 text-muted">Loading queue...</div>
