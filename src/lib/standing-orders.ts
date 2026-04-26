@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { StandingOrder } from "@/generated/prisma";
+import { tripStatusForPrisma } from "@/lib/enums";
 
 export interface GenerationResult {
   orderId: string;
@@ -79,7 +80,7 @@ export async function generateTripsForOrderInRange(
     const tripNumber = nextTripNumber(nextNum);
     nextNum++;
 
-    const initialStatus = (order.providerId ? "assigned" : "pending") as never;
+    const initialStatus = tripStatusForPrisma(order.providerId ? "assigned" : "pending")! as never;
     await prisma.trip.create({
       data: {
         tripNumber,

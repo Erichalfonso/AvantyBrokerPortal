@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { decryptPHI } from "@/lib/encryption";
 import { sendEmail, tripStatusChangedEmail } from "@/lib/email";
+import { tripStatusForPrisma, toTripStatusEnum } from "@/lib/enums";
 
 interface StatusBody {
   status: string;
@@ -25,13 +26,19 @@ export async function POST(
 
   const { id } = await params;
   const body = (await request.json()) as StatusBody;
-  const { status, note, documentation } = body;
+  const { status: rawStatus, note, documentation } = body;
 
   const trip = await prisma.trip.findFirst({
     where: { OR: [{ id }, { tripNumber: id }] },
   });
 
   if (!trip) return NextResponse.json({ error: "Trip not found" }, { status: 404 });
+
+  const status = toTripStatusEnum(rawStatus);
+  const currentStatus = String(trip.status).toLowerCase();
+  if (!status) {
+    return NextResponse.json({ error: `Invalid status: ${rawStatus}` }, { status: 400 });
+  }
 
   const validTransitions: Record<string, string[]> = {
     pending: ["cancelled"],
@@ -42,10 +49,10 @@ export async function POST(
     rejected: ["cancelled"],
   };
 
-  const allowed = validTransitions[trip.status] || [];
+  const allowed = validTransitions[currentStatus] || [];
   if (!allowed.includes(status)) {
     return NextResponse.json(
-      { error: `Cannot transition from ${trip.status} to ${status}` },
+      { error: `Cannot transition from ${currentStatus} to ${status}` },
       { status: 400 }
     );
   }
@@ -60,11 +67,13 @@ export async function POST(
     }
   }
 
+  const statusEnum = tripStatusForPrisma(status)!;
+
   const tripUpdate: Record<string, unknown> = {
-    status: status as never,
+    status: statusEnum as never,
     statusHistory: {
       create: {
-        status: status as never,
+        status: statusEnum as never,
         note,
         changedById: session.user.id,
       },
@@ -124,7 +133,7 @@ export async function POST(
     },
   });
 
-  await logAudit("STATUS_CHANGED", "Trip", trip.id, session.user.id, `${trip.status} → ${status}`);
+  await logAudit("STATUS_CHANGED", "Trip", trip.id, session.user.id, `${currentStatus} → ${status}`);
 
   if (session.user.role === "provider" && trip.createdById) {
     const creator = await prisma.user.findUnique({ where: { id: trip.createdById }, select: { name: true, email: true } });

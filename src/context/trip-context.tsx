@@ -146,9 +146,14 @@ export function TripProvider({ children }: { children: ReactNode }) {
           await fetchTrips();
           return trip;
         }
-      } catch { /* fall through to mock */ }
+        const errorBody = await res.json().catch(() => ({}));
+        console.error("[trips.addTrip] API failed:", res.status, errorBody);
+        throw new Error(errorBody?.error || `Failed to create trip (HTTP ${res.status})`);
+      } catch (e) {
+        if (e instanceof Error) throw e;
+        throw new Error("Network error creating trip");
+      }
     }
-    // Mock add
     const nextId = `T-${1000 + mockState.length + 1}`;
     const now = new Date().toISOString();
     const newTrip = {

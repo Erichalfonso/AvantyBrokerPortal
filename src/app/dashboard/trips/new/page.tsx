@@ -9,6 +9,7 @@ export default function NewTripPage() {
   const { addTrip } = useTrips();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     patientName: "",
@@ -30,12 +31,20 @@ export default function NewTripPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setError("");
 
-    const trip = await addTrip(form);
-    if (trip) {
-      router.push(`/dashboard/trips/${trip.tripNumber}`);
+    try {
+      const trip = await addTrip(form);
+      if (trip) {
+        router.push(`/dashboard/trips/${trip.tripNumber}`);
+        return;
+      }
+      setError("Failed to create trip. Please try again.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to create trip");
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   return (
@@ -168,6 +177,12 @@ export default function NewTripPage() {
             </div>
           </div>
         </div>
+
+        {error && (
+          <div className="p-4 bg-red-50 border border-danger/30 rounded-xl text-sm text-danger">
+            {error}
+          </div>
+        )}
 
         <div className="flex gap-4 pt-4">
           <button

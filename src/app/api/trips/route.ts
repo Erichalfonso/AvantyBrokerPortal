@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { encrypt, decryptPHI } from "@/lib/encryption";
+import { mobilityTypeForPrisma, tripStatusForPrisma } from "@/lib/enums";
 type TripStatus = string;
 
 export async function GET(request: NextRequest) {
@@ -69,7 +70,16 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
 
-  // Generate next trip number
+  if (!body.patientName || !body.pickupAddress || !body.destinationAddress || !body.appointmentDate || !body.appointmentTime || !body.mobilityType) {
+    return NextResponse.json({ error: "Missing required trip fields" }, { status: 400 });
+  }
+
+  const mobilityEnum = mobilityTypeForPrisma(body.mobilityType);
+  if (!mobilityEnum) {
+    return NextResponse.json({ error: `Invalid mobilityType: ${body.mobilityType}` }, { status: 400 });
+  }
+  const pendingStatus = tripStatusForPrisma("pending")!;
+
   const lastTrip = await prisma.trip.findFirst({
     orderBy: { tripNumber: "desc" },
     select: { tripNumber: true },
@@ -77,36 +87,43 @@ export async function POST(request: NextRequest) {
   const lastNum = lastTrip ? parseInt(lastTrip.tripNumber.replace("T-", "")) : 1000;
   const tripNumber = `T-${lastNum + 1}`;
 
-  const trip = await prisma.trip.create({
-    data: {
-      tripNumber,
-      patientName: encrypt(body.patientName),
-      patientPhone: encrypt(body.patientPhone || ""),
-      pickupAddress: body.pickupAddress,
-      destinationAddress: body.destinationAddress,
-      appointmentDate: new Date(body.appointmentDate),
-      appointmentTime: body.appointmentTime,
-      mobilityType: body.mobilityType as never,
-      specialInstructions: body.specialInstructions || "",
-      medicaidId: body.medicaidId || null,
-      authorizationNumber: body.authorizationNumber || null,
-      status: "pending" as never,
-      createdById: session.user.id,
-      statusHistory: {
-        create: {
-          status: "pending" as never,
-          changedById: session.user.id,
+  let trip;
+  try {
+    trip = await prisma.trip.create({
+      data: {
+        tripNumber,
+        patientName: encrypt(body.patientName),
+        patientPhone: encrypt(body.patientPhone || ""),
+        pickupAddress: body.pickupAddress,
+        destinationAddress: body.destinationAddress,
+        appointmentDate: new Date(body.appointmentDate),
+        appointmentTime: body.appointmentTime,
+        mobilityType: mobilityEnum as never,
+        specialInstructions: body.specialInstructions || "",
+        medicaidId: body.medicaidId || null,
+        authorizationNumber: body.authorizationNumber || null,
+        status: pendingStatus as never,
+        createdById: session.user.id,
+        statusHistory: {
+          create: {
+            status: pendingStatus as never,
+            changedById: session.user.id,
+          },
         },
       },
-    },
-    include: {
-      provider: { select: { id: true, name: true } },
-      statusHistory: {
-        orderBy: { createdAt: "asc" },
-        include: { changedBy: { select: { id: true, name: true } } },
+      include: {
+        provider: { select: { id: true, name: true } },
+        statusHistory: {
+          orderBy: { createdAt: "asc" },
+          include: { changedBy: { select: { id: true, name: true } } },
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error("[trips.create] prisma.trip.create failed:", error);
+    const message = error instanceof Error ? error.message : "Database error creating trip";
+    return NextResponse.json({ error: `Failed to create trip: ${message}` }, { status: 500 });
+  }
 
   await logAudit("TRIP_CREATED", "Trip", trip.id, session.user.id, `Created trip ${tripNumber}`);
 

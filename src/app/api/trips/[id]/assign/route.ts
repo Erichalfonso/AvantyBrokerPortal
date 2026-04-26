@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { decryptPHI } from "@/lib/encryption";
 import { sendEmail, tripAssignedEmail } from "@/lib/email";
+import { tripStatusForPrisma } from "@/lib/enums";
 
 export async function POST(
   request: NextRequest,
@@ -24,7 +25,8 @@ export async function POST(
 
   if (!trip) return NextResponse.json({ error: "Trip not found" }, { status: 404 });
 
-  if (!["pending", "rejected"].includes(trip.status)) {
+  const currentStatus = String(trip.status).toLowerCase();
+  if (!["pending", "rejected"].includes(currentStatus)) {
     return NextResponse.json(
       { error: "Trip can only be assigned when pending or rejected" },
       { status: 400 }
@@ -52,14 +54,15 @@ export async function POST(
     );
   }
 
+  const assignedStatus = tripStatusForPrisma("assigned")!;
   const updated = await prisma.trip.update({
     where: { id: trip.id },
     data: {
       providerId: provider.id,
-      status: "assigned" as never,
+      status: assignedStatus as never,
       statusHistory: {
         create: {
-          status: "assigned" as never,
+          status: assignedStatus as never,
           note: `Assigned to ${provider.name}`,
           changedById: session.user.id,
         },
