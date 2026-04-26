@@ -3,6 +3,8 @@ import nodemailer from "nodemailer";
 // Configure transporter based on environment
 // For AWS SES: set SMTP_HOST=email-smtp.us-east-2.amazonaws.com, SMTP_PORT=587
 // For development: uses ethereal test account if no SMTP config
+const SEND_TIMEOUT_MS = 8000;
+
 function getTransporter() {
   if (process.env.SMTP_HOST) {
     return nodemailer.createTransport({
@@ -13,10 +15,12 @@ function getTransporter() {
         user: process.env.SMTP_USER || "",
         pass: process.env.SMTP_PASS || "",
       },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: SEND_TIMEOUT_MS,
     });
   }
 
-  // Dev fallback: log to console instead of sending
   return null;
 }
 
@@ -38,12 +42,16 @@ export async function sendEmail({ to, subject, html }: EmailOptions): Promise<bo
   }
 
   try {
-    await transporter.sendMail({
+    const sendPromise = transporter.sendMail({
       from: FROM_ADDRESS,
       to,
       subject,
       html,
     });
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("SMTP send timed out")), SEND_TIMEOUT_MS)
+    );
+    await Promise.race([sendPromise, timeoutPromise]);
     console.log(`[email] Sent to ${to}: ${subject}`);
     return true;
   } catch (error) {
