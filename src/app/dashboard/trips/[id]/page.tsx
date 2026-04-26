@@ -7,7 +7,6 @@ import { StatusBadge } from "@/components/status-badge";
 import { RejectModal } from "@/components/reject-modal";
 import { CompleteTripModal, type CompleteTripDocumentation } from "@/components/complete-trip-modal";
 import { MOBILITY_LABELS, TripStatus, TRIP_STATUS_LABELS, MobilityType } from "@/types";
-import { mockProviders } from "@/lib/mock-data";
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 
@@ -72,9 +71,10 @@ export default function TripDetailPage() {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [statusError, setStatusError] = useState("");
 
-  const { getTrip: getTripFromCtx } = useTrips();
+  const [loadError, setLoadError] = useState("");
 
   const fetchTrip = useCallback(async () => {
+    setLoadError("");
     try {
       const res = await fetch((`/api/trips/${params.id}`));
       if (res.ok) {
@@ -82,28 +82,42 @@ export default function TripDetailPage() {
         setLoading(false);
         return;
       }
-    } catch { /* fall through to mock */ }
-    // Fallback to mock via context
-    const mockTrip = await getTripFromCtx(params.id as string);
-    if (mockTrip) setTrip(mockTrip as TripDetail);
+      if (res.status === 404) {
+        setTrip(null);
+      } else {
+        setLoadError("Could not load this trip. Check your connection and try again.");
+      }
+    } catch {
+      setLoadError("Could not load this trip. Check your connection and try again.");
+    }
     setLoading(false);
-  }, [params.id, getTripFromCtx]);
+  }, [params.id]);
 
   useEffect(() => {
     fetchTrip();
     fetch(("/api/providers?active=true"))
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
+      .then((r) => (r.ok ? r.json() : []))
       .then(setProviders)
-      .catch(() => {
-        setProviders(mockProviders.filter((p) => p.active));
-      });
+      .catch(() => setProviders([]));
   }, [fetchTrip]);
 
   if (loading) {
     return <div className="text-center py-16 text-muted">Loading trip...</div>;
+  }
+
+  if (loadError) {
+    return (
+      <div className="text-center py-16">
+        <h1 className="text-2xl font-bold text-navy">Couldn&apos;t load trip</h1>
+        <p className="text-muted mt-2">{loadError}</p>
+        <button
+          onClick={() => { setLoading(true); fetchTrip(); }}
+          className="mt-4 px-4 py-2 bg-teal hover:bg-teal-dark text-white font-medium rounded-lg transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   if (!trip) {

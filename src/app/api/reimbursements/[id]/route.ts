@@ -92,7 +92,7 @@ export async function PUT(
   if (body.status) {
     const validTransitions: Record<string, string[]> = {
       DRAFT: ["SUBMITTED", "VOID"],
-      SUBMITTED: ["UNDER_REVIEW", "APPROVED", "DENIED", "VOID"],
+      SUBMITTED: ["UNDER_REVIEW", "APPROVED", "DENIED", "VOID", "DRAFT"],
       UNDER_REVIEW: ["APPROVED", "DENIED", "VOID"],
       APPROVED: ["PAID", "VOID"],
       DENIED: ["VOID"],
@@ -102,6 +102,19 @@ export async function PUT(
     const allowed = validTransitions[form.status] || [];
     if (!allowed.includes(newStatus)) {
       return NextResponse.json({ error: `Cannot transition from ${form.status} to ${newStatus}` }, { status: 400 });
+    }
+
+    if (form.status === "SUBMITTED" && newStatus === "DRAFT") {
+      if (form.createdById !== session.user.id) {
+        return NextResponse.json(
+          { error: "Only the form creator can recall a submitted form to draft." },
+          { status: 403 }
+        );
+      }
+      updateData.submittedAt = null;
+      updateData.reviewedAt = null;
+      updateData.reviewedById = null;
+      updateData.reviewNotes = null;
     }
 
     updateData.status = newStatus;
@@ -117,7 +130,9 @@ export async function PUT(
     if (body.reviewNotes) updateData.reviewNotes = body.reviewNotes;
 
     await logAudit(
-      "REIMBURSEMENT_FORM_STATUS_CHANGED",
+      form.status === "SUBMITTED" && newStatus === "DRAFT"
+        ? "REIMBURSEMENT_FORM_RECALLED"
+        : "REIMBURSEMENT_FORM_STATUS_CHANGED",
       "ReimbursementForm",
       form.id,
       session.user.id,

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
+import { EditUserModal, type EditableUser } from "@/components/edit-user-modal";
 
 interface UserEntry {
   id: string;
@@ -30,6 +31,7 @@ export default function UsersPage() {
   const [createdCredentials, setCreatedCredentials] = useState<{ name: string; email: string; password: string; role: string } | null>(null);
   const [resetResult, setResetResult] = useState<{ name: string; email: string; emailed: boolean } | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<EditableUser | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -280,6 +282,18 @@ export default function UsersPage() {
         </div>
       )}
 
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          providers={providers}
+          onSaved={async () => {
+            setEditingUser(null);
+            await fetchUsers();
+          }}
+          onCancel={() => setEditingUser(null)}
+        />
+      )}
+
       {/* Users Table */}
       <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         {loading ? (
@@ -310,13 +324,27 @@ export default function UsersPage() {
                     <td className="p-4 text-sm text-navy">{u.provider?.name || "—"}</td>
                     <td className="p-4 text-sm text-muted">{new Date(u.createdAt).toLocaleDateString()}</td>
                     <td className="p-4">
-                      <button
-                        onClick={() => handleResetPassword(u.id, u.name, u.email)}
-                        disabled={resettingId === u.id}
-                        className="px-3 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {resettingId === u.id ? "Resetting..." : "Reset Password"}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setEditingUser({
+                            id: u.id,
+                            name: u.name,
+                            email: u.email,
+                            role: u.role,
+                            providerId: u.providerId,
+                          })}
+                          className="px-3 py-1 text-xs font-medium text-navy bg-background hover:bg-gray-100 border border-border rounded-lg transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleResetPassword(u.id, u.name, u.email)}
+                          disabled={resettingId === u.id}
+                          className="px-3 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {resettingId === u.id ? "Resetting..." : "Reset Password"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

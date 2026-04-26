@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useTrips } from "@/context/trip-context";
-import { mockProviders } from "@/lib/mock-data";
 import { MOBILITY_LABELS, MobilityType } from "@/types";
 import Link from "next/link";
 
@@ -24,11 +23,13 @@ export default function ProvidersPage() {
   const { trips } = useTrips();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const fetchProviders = useCallback(() => {
+    setLoadError("");
     fetch(("/api/providers"), { credentials: "include" })
       .then((r) => {
-        if (!r.ok) throw new Error();
+        if (!r.ok) throw new Error("Failed to load providers");
         return r.json();
       })
       .then((data) => {
@@ -36,7 +37,8 @@ export default function ProvidersPage() {
         setLoading(false);
       })
       .catch(() => {
-        setProviders(mockProviders);
+        setProviders([]);
+        setLoadError("Could not load providers. Check your connection and try again.");
         setLoading(false);
       });
   }, []);
@@ -75,6 +77,15 @@ export default function ProvidersPage() {
           </Link>
         )}
       </div>
+
+      {loadError && (
+        <div className="mb-6 p-4 bg-red-50 border border-danger/30 rounded-xl flex items-start justify-between">
+          <p className="text-sm text-danger">{loadError}</p>
+          <button onClick={fetchProviders} className="text-sm font-medium text-danger hover:text-red-700 ml-3">
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {providers.map((provider) => {

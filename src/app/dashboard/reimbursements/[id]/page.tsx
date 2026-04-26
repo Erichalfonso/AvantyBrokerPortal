@@ -143,7 +143,7 @@ export default function ReimbursementDetailPage() {
       </div>
 
       {/* Status Actions */}
-      {isBrokerAdmin && (
+      {(isBrokerAdmin || (isCreator && status === "submitted")) && (
         <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
           <div className="flex items-center gap-3 flex-wrap">
             {status === "draft" && isCreator && (
@@ -152,7 +152,19 @@ export default function ReimbursementDetailPage() {
                 <button onClick={handleDelete} className="px-4 py-2 text-red-600 hover:bg-red-50 text-sm font-medium rounded-lg border border-red-200">Delete Draft</button>
               </>
             )}
-            {(status === "submitted" || status === "under_review") && (
+            {status === "submitted" && isCreator && (
+              <button
+                onClick={() => {
+                  if (!confirm("Recall this form to draft? You'll be able to edit and resubmit it.")) return;
+                  handleStatusChange("draft");
+                }}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+              >
+                Recall to Draft
+              </button>
+            )}
+            {isBrokerAdmin && (status === "submitted" || status === "under_review") && (
               <>
                 {status === "submitted" && (
                   <button onClick={() => handleStatusChange("under_review")} disabled={actionLoading} className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium rounded-lg disabled:opacity-50">Mark Under Review</button>
@@ -161,14 +173,14 @@ export default function ReimbursementDetailPage() {
                 <button onClick={() => handleStatusChange("denied")} disabled={actionLoading} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg disabled:opacity-50">Deny</button>
               </>
             )}
-            {status === "approved" && (
+            {isBrokerAdmin && status === "approved" && (
               <button onClick={() => handleStatusChange("paid")} disabled={actionLoading} className="px-4 py-2 bg-teal hover:bg-teal-dark text-white text-sm font-medium rounded-lg disabled:opacity-50">Mark as Paid</button>
             )}
-            {status !== "void" && status !== "paid" && (
+            {isBrokerAdmin && status !== "void" && status !== "paid" && (
               <button onClick={() => handleStatusChange("void")} disabled={actionLoading} className="px-4 py-2 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-lg border border-gray-200">Void</button>
             )}
           </div>
-          {(status === "submitted" || status === "under_review") && (
+          {isBrokerAdmin && (status === "submitted" || status === "under_review") && (
             <div className="mt-3">
               <input
                 type="text"
