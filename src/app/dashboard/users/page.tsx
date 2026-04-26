@@ -74,29 +74,34 @@ export default function UsersPage() {
     setError("");
     setInviteResult(null);
 
-    const res = await fetch(("/api/users"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        name: form.name,
-        email: form.email,
-        role: form.role,
-        providerId: form.role === "provider" ? form.providerId || null : null,
-      }),
-    });
+    try {
+      const res = await fetch(("/api/users"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          role: form.role,
+          providerId: form.role === "provider" ? form.providerId || null : null,
+        }),
+      });
 
-    if (res.ok) {
-      const data = await res.json();
-      setInviteResult({ name: form.name, email: form.email, emailed: !!data.emailed });
-      setForm({ name: "", email: "", role: "broker", providerId: "" });
-      setShowForm(false);
-      fetchUsers();
-    } else {
-      const data = await res.json();
-      setError(data.error || "Failed to create user");
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        setInviteResult({ name: form.name, email: form.email, emailed: !!data.emailed });
+        setForm({ name: "", email: "", role: "broker", providerId: "" });
+        setShowForm(false);
+        fetchUsers();
+      } else {
+        setError(data.error || `Failed to create user (HTTP ${res.status})`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error creating user");
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const handleResetPassword = async (userId: string, userName: string, userEmail: string) => {
