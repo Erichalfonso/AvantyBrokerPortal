@@ -122,6 +122,30 @@ export function forgotPasswordEmail(name: string, resetUrl: string) {
   };
 }
 
+export function userInvitedEmail(name: string, loginEmail: string, tempPassword: string, role: string) {
+  const loginUrl = `${process.env.NEXTAUTH_URL || "https://portal.avantycare.com"}/`;
+  const roleLabel = role.replace(/_/g, " ").toLowerCase();
+  return {
+    subject: "Welcome to Avanty Care Portal",
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px;">
+        <h2 style="color: #1a365d;">Welcome, ${name}</h2>
+        <p>An account has been created for you on the Avanty Care Portal as a <strong style="text-transform: capitalize;">${roleLabel}</strong>.</p>
+        <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0; color: #718096;">Login Email</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-weight: bold;">${loginEmail}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e2e8f0; color: #718096;">Temporary Password</td><td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-weight: bold;">${tempPassword}</td></tr>
+        </table>
+        <a href="${loginUrl}"
+           style="display: inline-block; padding: 12px 24px; background-color: #319795; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+          Sign in
+        </a>
+        <p style="color: #4a5568; font-size: 13px; margin-top: 24px;">For your security, please change this temporary password after signing in for the first time. If you did not expect this email, please contact your administrator.</p>
+        <p style="color: #a0aec0; font-size: 12px; margin-top: 24px;">Avanty Care Transportation Portal</p>
+      </div>
+    `,
+  };
+}
+
 export function passwordResetEmail(name: string, tempPassword: string) {
   const loginUrl = `${process.env.NEXTAUTH_URL || "https://portal.avantycare.com"}/`;
   return {

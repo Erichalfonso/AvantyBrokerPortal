@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
+import { ChangePasswordModal } from "@/components/change-password-modal";
 const brokerLinks = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
   { href: "/dashboard/queue", label: "Queue", icon: QueueIcon },
@@ -41,6 +42,7 @@ export function Sidebar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const links = user?.role === "provider"
     ? providerLinks
@@ -101,8 +103,14 @@ export function Sidebar() {
           <p className="text-teal-light text-xs font-medium mt-1 capitalize">{user?.role}</p>
         </div>
         <button
-          onClick={handleLogout}
+          onClick={() => setShowChangePassword(true)}
           className="w-full mt-2 px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors text-left"
+        >
+          Change Password
+        </button>
+        <button
+          onClick={handleLogout}
+          className="w-full mt-1 px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors text-left"
         >
           Sign Out
         </button>
@@ -141,6 +149,10 @@ export function Sidebar() {
       <aside className="hidden lg:flex w-64 bg-navy min-h-screen flex-col fixed left-0 top-0 z-30">
         {sidebarContent}
       </aside>
+
+      {showChangePassword && (
+        <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+      )}
     </>
   );
 }

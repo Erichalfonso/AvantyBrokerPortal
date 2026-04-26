@@ -27,8 +27,7 @@ export default function UsersPage() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [createdCredentials, setCreatedCredentials] = useState<{ name: string; email: string; password: string; role: string } | null>(null);
+  const [inviteResult, setInviteResult] = useState<{ name: string; email: string; emailed: boolean } | null>(null);
   const [resetResult, setResetResult] = useState<{ name: string; email: string; emailed: boolean } | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<EditableUser | null>(null);
@@ -36,7 +35,6 @@ export default function UsersPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    password: "",
     role: "broker",
     providerId: "",
   });
@@ -74,7 +72,7 @@ export default function UsersPage() {
     e.preventDefault();
     setSubmitting(true);
     setError("");
-    setSuccess("");
+    setInviteResult(null);
 
     const res = await fetch(("/api/users"), {
       method: "POST",
@@ -83,16 +81,15 @@ export default function UsersPage() {
       body: JSON.stringify({
         name: form.name,
         email: form.email,
-        password: form.password,
         role: form.role,
         providerId: form.role === "provider" ? form.providerId || null : null,
       }),
     });
 
     if (res.ok) {
-      setCreatedCredentials({ name: form.name, email: form.email, password: form.password, role: form.role });
-      setSuccess(`Account created for ${form.email}`);
-      setForm({ name: "", email: "", password: "", role: "broker", providerId: "" });
+      const data = await res.json();
+      setInviteResult({ name: form.name, email: form.email, emailed: !!data.emailed });
+      setForm({ name: "", email: "", role: "broker", providerId: "" });
       setShowForm(false);
       fetchUsers();
     } else {
@@ -130,41 +127,35 @@ export default function UsersPage() {
           <p className="text-muted mt-1">{users.length} users registered</p>
         </div>
         <button
-          onClick={() => { setShowForm(!showForm); setError(""); setSuccess(""); }}
+          onClick={() => { setShowForm(!showForm); setError(""); setInviteResult(null); }}
           className="px-4 py-2 bg-teal hover:bg-teal-dark text-white font-medium rounded-lg transition-colors"
         >
           {showForm ? "Cancel" : "+ Create User"}
         </button>
       </div>
 
-      {createdCredentials && (
-        <div className="mb-6 bg-green-50 border border-success/30 rounded-xl p-6">
-          <div className="flex items-start justify-between mb-3">
-            <h3 className="text-sm font-semibold text-success uppercase tracking-wider">Account Created Successfully</h3>
-            <button
-              onClick={() => setCreatedCredentials(null)}
-              className="text-muted hover:text-navy text-sm"
-            >
-              Dismiss
-            </button>
+      {inviteResult && (
+        inviteResult.emailed ? (
+          <div className="mb-6 p-4 bg-green-50 border border-success/30 rounded-xl flex items-start justify-between">
+            <div className="text-sm">
+              <p className="font-semibold text-success">Invitation sent</p>
+              <p className="text-navy mt-1">
+                {inviteResult.name} ({<span className="font-mono">{inviteResult.email}</span>}) will receive a welcome email with sign-in instructions.
+              </p>
+            </div>
+            <button onClick={() => setInviteResult(null)} className="text-muted hover:text-navy text-sm ml-3">Dismiss</button>
           </div>
-          <p className="text-sm text-navy mb-3">Share these credentials with the new user:</p>
-          <div className="bg-white rounded-lg border border-border p-4 font-mono text-sm space-y-1">
-            <p><span className="text-muted">Name:</span> <span className="text-navy">{createdCredentials.name}</span></p>
-            <p><span className="text-muted">Email:</span> <span className="text-navy">{createdCredentials.email}</span></p>
-            <p><span className="text-muted">Password:</span> <span className="text-navy">{createdCredentials.password}</span></p>
-            <p><span className="text-muted">Role:</span> <span className="text-navy capitalize">{createdCredentials.role}</span></p>
+        ) : (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-300/50 rounded-xl flex items-start justify-between">
+            <div className="text-sm">
+              <p className="font-semibold text-amber-700">Account created, but invitation email failed</p>
+              <p className="text-navy mt-1">
+                The account for <span className="font-mono">{inviteResult.email}</span> was created. Email delivery failed — check SMTP configuration. Use <strong>Reset Password</strong> on the row to retry, or contact support.
+              </p>
+            </div>
+            <button onClick={() => setInviteResult(null)} className="text-muted hover:text-navy text-sm ml-3">Dismiss</button>
           </div>
-          <button
-            onClick={() => {
-              const text = `Login Credentials\nName: ${createdCredentials.name}\nEmail: ${createdCredentials.email}\nPassword: ${createdCredentials.password}\nRole: ${createdCredentials.role}`;
-              navigator.clipboard.writeText(text);
-            }}
-            className="mt-3 px-4 py-2 text-sm bg-navy hover:bg-navy-dark text-white font-medium rounded-lg transition-colors"
-          >
-            Copy Credentials
-          </button>
-        </div>
+        )
       )}
 
       {resetResult && (
@@ -190,16 +181,13 @@ export default function UsersPage() {
         </div>
       )}
 
-      {success && !createdCredentials && (
-        <div className="mb-6 p-4 bg-green-50 border border-success/30 rounded-xl text-sm text-success">
-          {success}
-        </div>
-      )}
-
       {/* Create User Form */}
       {showForm && (
         <div className="bg-card rounded-xl border border-border shadow-sm p-6 mb-6">
           <h2 className="text-sm font-semibold text-navy uppercase tracking-wider mb-4">New User Account</h2>
+          <p className="text-sm text-muted mb-4">
+            A temporary password will be generated and emailed to the new user. They&apos;ll be prompted to change it on first sign-in.
+          </p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -220,19 +208,6 @@ export default function UsersPage() {
                   value={form.email}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-2 rounded-lg border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-navy mb-1">Password *</label>
-                <input
-                  name="password"
-                  type="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  required
-                  minLength={8}
-                  placeholder="Min 8 characters"
                   className="w-full px-4 py-2 rounded-lg border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent"
                 />
               </div>
@@ -276,7 +251,7 @@ export default function UsersPage() {
               disabled={submitting}
               className="px-6 py-2 bg-teal hover:bg-teal-dark disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
             >
-              {submitting ? "Creating..." : "Create Account"}
+              {submitting ? "Sending invitation…" : "Send Invitation"}
             </button>
           </form>
         </div>

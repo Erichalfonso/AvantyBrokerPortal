@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logAudit } from "@/lib/audit";
+import { sendEmail, userInvitedEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 export async function GET() {
   const session = await auth();
@@ -35,23 +38,31 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
 
-  // Check for duplicate email
-  const existing = await prisma.user.findUnique({
-    where: { email: body.email },
-  });
+  if (!body.name || !body.email) {
+    return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
+  }
+
+  const email = String(body.email).trim().toLowerCase();
+  const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return NextResponse.json({ error: "Email already in use" }, { status: 400 });
   }
 
-  const passwordHash = await bcrypt.hash(body.password, 10);
+  const role = body.role || "broker";
+  if (role === "provider" && !body.providerId) {
+    return NextResponse.json({ error: "Provider role requires a providerId" }, { status: 400 });
+  }
+
+  const tempPassword = crypto.randomBytes(9).toString("base64url");
+  const passwordHash = await bcrypt.hash(tempPassword, 10);
 
   const user = await prisma.user.create({
     data: {
-      name: body.name,
-      email: body.email,
+      name: String(body.name).trim(),
+      email,
       passwordHash,
-      role: body.role || "broker",
-      providerId: body.providerId || null,
+      role,
+      providerId: role === "provider" ? body.providerId : null,
     },
     select: {
       id: true,
@@ -63,5 +74,16 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json(user, { status: 201 });
+  const invite = userInvitedEmail(user.name, user.email, tempPassword, user.role);
+  const emailed = await sendEmail({ to: user.email, ...invite });
+
+  await logAudit(
+    "USER_CREATED",
+    "User",
+    user.id,
+    session.user.id,
+    `Created ${user.role} ${user.email}${emailed ? "" : " (email delivery failed)"}`
+  );
+
+  return NextResponse.json({ ...user, emailed }, { status: 201 });
 }
